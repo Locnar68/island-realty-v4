@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head><title>Test</title></head>
+<body>
+<h1>Property ID Test</h1>
+<div id="output"></div>
+<script>
+fetch('/api/properties')
+    .then(r => r.json())
+    .then(data => {
+        const props = data.properties;
+        console.log('First property:', props[0]);
+        console.log('ID:', props[0].id);
+        console.log('Type of ID:', typeof props[0].id);
+        
+        document.getElementById('output').innerHTML = `
+            <h2>First Property</h2>
+            <p>ID: ${props[0].id}</p>
+            <p>Address: ${props[0].address}</p>
+            <p>All keys: ${Object.keys(props[0]).join(', ')}</p>
+        `;
+    });
+</script>
+</body>
+</html>

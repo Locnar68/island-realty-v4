@@ -1,0 +1,44 @@
+# Virtual environment
+venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Credentials & secrets
+.env
+config/token.pickle
+config/gmail-credentials.json
+credentials/
+token.pickle
+
+# Logs
+logs/
+*.log
+
+# Backups (all patterns)
+backup-*/
+backups/
+*.bak
+*.bak.*
+*.backup
+*.backup.*
+*.backup_*
+*.broken
+*.conflict_backup
+
+# Attachments (large binary files)
+attachments/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env template (contains sample creds)
+.env.v4
+

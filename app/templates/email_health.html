@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Processing Health - Island Advantage Realty</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            opacity: 0.9;
+        }
+
+        .header .nav {
+            margin-top: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .header .nav a {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+            display: inline-block;
+            transition: background 0.2s;
+        }
+
+        .header .nav a:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .scan-info {
+            background: rgba(255,255,255,0.15);
+            padding: 0.75rem 1rem;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .scan-info .timestamp {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .scan-button {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .scan-button:hover:not(:disabled) {
+            background: #059669;
+        }
+
+        .scan-button:disabled {
+            background: #6b7280;
+            cursor: not-allowed;
+        }
+
+        .scan-button.scanning {
+            background: #f59e0b;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .stat-card h3 {
+            font-size: 0.9rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card .value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-card .subtext {
+            font-size: 0.9rem;
+            color: #999;
+            margin-top: 0.5rem;
+        }
+
+        .stat-card.success .value {
+            color: #10b981;
+        }
+
+        .stat-card.warning .value {
+            color: #f59e0b;
+        }
+
+        .stat-card.danger .value {
+            color: #ef4444;
+        }
+
+        .section {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .section h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 0.5rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table th {
+            text-align: left;
+            padding: 0.75rem;
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .badge.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge.warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge.danger {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .badge.info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.2s;
+        }
+
+        .refresh-btn:hover {
+            background: #5568d3;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+
+        .email-type-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .email-type-card {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+        }
+
+        .email-type-card h4 {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+
+        .email-type-card .count {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .email-type-card .match-rate {
+            font-size: 0.85rem;
+            color: #10b981;
+            margin-top: 0.25rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #999;
+        }
+
+        .scan-status {
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+
+        .scan-status.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .scan-status.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .scan-status.running {
+            background: #fef3c7;
+            color: #92400e;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📧 Email Processing Health Dashboard</h1>
+        <p>Monitor email processing status, unmatched emails, and system performance</p>
+        <div class="nav">
+            <a href="/">← Back to Properties</a>
+            <button class="refresh-btn" onclick="loadData()">🔄 Refresh Data</button>
+            
+            <div class="scan-info">
+                <div class="timestamp">
+                    Last Scan: <strong id="last-scan-time">Loading...</strong>
+                </div>
+                <button class="scan-button" id="scan-button" onclick="triggerScan()">
+                    ▶️ Run Email Scan
+                </button>
+            </div>
+        </div>
+        <div id="scan-status-container"></div>
+    </div>
+
+    <div class="container">
+        <!-- Overall Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Emails (30 days)</h3>
+                <div class="value" id="total-emails">--</div>
+                <div class="subtext">Processed emails</div>
+            </div>
+            <div class="stat-card success">
+                <h3>Match Rate</h3>
+                <div class="value" id="match-rate">--%</div>
+                <div class="subtext" id="matched-count">-- matched</div>
+            </div>
+            <div class="stat-card warning">
+                <h3>Unmatched</h3>
+                <div class="value" id="unmatched-emails">--</div>
+                <div class="subtext">Require attention</div>
+            </div>
+            <div class="stat-card danger">
+                <h3>Errors</h3>
+                <div class="value" id="error-emails">--</div>
+                <div class="subtext">Processing failures</div>
+            </div>
+            <div class="stat-card">
+                <h3>Properties Created</h3>
+                <div class="value" id="properties-created">--</div>
+                <div class="subtext">From emails (30 days)</div>
+            </div>
+        </div>
+
+        <!-- Email Types Breakdown -->
+        <div class="section">
+            <h2>📨 Email Types (Last 7 Days)</h2>
+            <div class="email-type-grid" id="email-types-grid">
+                <div class="loading">Loading email types...</div>
+            </div>
+        </div>
+
+        <!-- Daily Processing Chart -->
+        <div class="section">
+            <h2>📊 Daily Processing (Last 7 Days)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Total</th>
+                        <th>Matched</th>
+                        <th>Unmatched</th>
+                        <th>Match Rate</th>
+                    </tr>
+                </thead>
+                <tbody id="daily-stats-table">
+                    <tr><td colspan="5" class="loading">Loading daily stats...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Unmatched Important Emails -->
+        <div class="section">
+            <h2>⚠️ Unmatched Important Emails</h2>
+            <p style="color: #666; margin-bottom: 1rem;">
+                These emails contain property information but couldn't be matched to existing properties.
+                They may require manual review or new property creation.
+            </p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Subject</th>
+                        <th>From</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="unmatched-table">
+                    <tr><td colspan="4" class="loading">Loading unmatched emails...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Recently Created Properties -->
+        <div class="section">
+            <h2>🏠 Recently Created Properties (From Emails)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Property ID</th>
+                        <th>Address</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody id="recent-properties-table">
+                    <tr><td colspan="4" class="loading">Loading recent properties...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Processing Errors -->
+        <div class="section">
+            <h2>❌ Processing Errors (Last 7 Days)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Subject</th>
+                        <th>From</th>
+                        <th>Date</th>
+                        <th>Error</th>
+                    </tr>
+                </thead>
+                <tbody id="errors-table">
+                    <tr><td colspan="4" class="loading">Loading errors...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let scanInProgress = false;
+
+        async function loadLastScanTime() {
+            try {
+                const response = await fetch('/api/email-health/last-scan');
+                const data = await response.json();
+                
+                const timeElement = document.getElementById('last-scan-time');
+                
+                if (data.last_scan) {
+                    const scanDate = new Date(data.last_scan);
+                    const now = new Date();
+                    const diffMinutes = Math.floor((now - scanDate) / 60000);
+                    
+                    if (diffMinutes < 1) {
+                        timeElement.textContent = 'Just now';
+                    } else if (diffMinutes < 60) {
+                        timeElement.textContent = `${diffMinutes} min ago`;
+                    } else {
+                        timeElement.textContent = scanDate.toLocaleString();
+                    }
+                } else {
+                    timeElement.textContent = 'Never';
+                }
+            } catch (error) {
+                console.error('Error loading last scan time:', error);
+                document.getElementById('last-scan-time').textContent = 'Unknown';
+            }
+        }
+
+        async function triggerScan() {
+            if (scanInProgress) return;
+            
+            const button = document.getElementById('scan-button');
+            const statusContainer = document.getElementById('scan-status-container');
+            
+            scanInProgress = true;
+            button.disabled = true;
+            button.classList.add('scanning');
+            button.innerHTML = '⏳ Scanning...';
+            
+            statusContainer.innerHTML = '<div class="scan-status running">Email scan in progress... This may take up to 60 seconds.</div>';
+            
+            try {
+                const response = await fetch('/api/email-health/trigger-scan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Poll for completion
+                    let attempts = 0;
+                    const maxAttempts = 12; // 60 seconds
+                    
+                    const checkStatus = setInterval(async () => {
+                        attempts++;
+                        
+                        try {
+                            const statusResponse = await fetch('/api/email-health/scan-status');
+                            const statusData = await statusResponse.json();
+                            
+                            if (statusData.last_result === 'success') {
+                                clearInterval(checkStatus);
+                                scanInProgress = false;
+                                button.disabled = false;
+                                button.classList.remove('scanning');
+                                button.innerHTML = '▶️ Run Email Scan';
+                                
+                                statusContainer.innerHTML = '<div class="scan-status success">✓ Scan completed successfully! Refreshing data...</div>';
+                                
+                                // Refresh data
+                                loadLastScanTime();
+                                loadData();
+                                
+                                // Clear status after 5 seconds
+                                setTimeout(() => {
+                                    statusContainer.innerHTML = '';
+                                }, 5000);
+                                
+                            } else if (statusData.last_result && statusData.last_result.includes('error')) {
+                                clearInterval(checkStatus);
+                                scanInProgress = false;
+                                button.disabled = false;
+                                button.classList.remove('scanning');
+                                button.innerHTML = '▶️ Run Email Scan';
+                                
+                                statusContainer.innerHTML = '<div class="scan-status error">✗ Scan failed: ' + statusData.last_result + '</div>';
+                            } else if (attempts >= maxAttempts) {
+                                clearInterval(checkStatus);
+                                scanInProgress = false;
+                                button.disabled = false;
+                                button.classList.remove('scanning');
+                                button.innerHTML = '▶️ Run Email Scan';
+                                
+                                statusContainer.innerHTML = '<div class="scan-status running">⏳ Scan still running... Check back in a moment.</div>';
+                                
+                                setTimeout(() => {
+                                    loadLastScanTime();
+                                    loadData();
+                                }, 5000);
+                            }
+                        } catch (error) {
+                            console.error('Error checking scan status:', error);
+                        }
+                    }, 5000); // Check every 5 seconds
+                    
+                } else {
+                    throw new Error(data.error || 'Unknown error');
+                }
+                
+            } catch (error) {
+                console.error('Error triggering scan:', error);
+                scanInProgress = false;
+                button.disabled = false;
+                button.classList.remove('scanning');
+                button.innerHTML = '▶️ Run Email Scan';
+                
+                statusContainer.innerHTML = '<div class="scan-status error">✗ Error: ' + error.message + '</div>';
+            }
+        }
+
+        async function loadData() {
+            try {
+                const response = await fetch('/api/email-health/stats');
+                const data = await response.json();
+
+                // Update overall stats
+                document.getElementById('total-emails').textContent = data.overall.total_emails.toLocaleString();
+                document.getElementById('match-rate').textContent = data.overall.match_rate.toFixed(1) + '%';
+                document.getElementById('matched-count').textContent = data.overall.matched_emails.toLocaleString() + ' matched';
+                document.getElementById('unmatched-emails').textContent = data.overall.unmatched_emails.toLocaleString();
+                document.getElementById('error-emails').textContent = data.overall.error_emails.toLocaleString();
+                document.getElementById('properties-created').textContent = data.overall.properties_created.toLocaleString();
+
+                // Update email types
+                const typesGrid = document.getElementById('email-types-grid');
+                if (data.email_types.length === 0) {
+                    typesGrid.innerHTML = '<div class="empty-state">No emails processed in the last 7 days</div>';
+                } else {
+                    typesGrid.innerHTML = data.email_types.map(type => `
+                        <div class="email-type-card">
+                            <h4>${type.type}</h4>
+                            <div class="count">${type.count}</div>
+                            <div class="match-rate">${type.match_rate.toFixed(1)}% matched (${type.matched}/${type.count})</div>
+                        </div>
+                    `).join('');
+                }
+
+                // Update daily stats
+                const dailyTable = document.getElementById('daily-stats-table');
+                if (data.daily_stats.length === 0) {
+                    dailyTable.innerHTML = '<tr><td colspan="5" class="empty-state">No daily stats available</td></tr>';
+                } else {
+                    dailyTable.innerHTML = data.daily_stats.map(day => `
+                        <tr>
+                            <td>${new Date(day.date).toLocaleDateString()}</td>
+                            <td><strong>${day.total}</strong></td>
+                            <td><span class="badge success">${day.matched}</span></td>
+                            <td><span class="badge ${day.unmatched > 0 ? 'warning' : 'info'}">${day.unmatched}</span></td>
+                            <td>${day.match_rate.toFixed(1)}%</td>
+                        </tr>
+                    `).join('');
+                }
+
+                // Update unmatched emails
+                const unmatchedTable = document.getElementById('unmatched-table');
+                if (data.unmatched_important.length === 0) {
+                    unmatchedTable.innerHTML = '<tr><td colspan="4" class="empty-state">✓ No unmatched important emails!</td></tr>';
+                } else {
+                    unmatchedTable.innerHTML = data.unmatched_important.map(email => `
+                        <tr>
+                            <td><strong>${email.subject}</strong></td>
+                            <td>${email.from}</td>
+                            <td>${new Date(email.date).toLocaleString()}</td>
+                            <td><span class="badge warning">Needs Review</span></td>
+                        </tr>
+                    `).join('');
+                }
+
+                // Update recent properties
+                const propertiesTable = document.getElementById('recent-properties-table');
+                if (data.recent_properties.length === 0) {
+                    propertiesTable.innerHTML = '<tr><td colspan="4" class="empty-state">No properties created from emails recently</td></tr>';
+                } else {
+                    propertiesTable.innerHTML = data.recent_properties.map(prop => `
+                        <tr>
+                            <td><strong>#${prop.id}</strong></td>
+                            <td>${prop.address}</td>
+                            <td><span class="badge info">${prop.status}</span></td>
+                            <td>${new Date(prop.created_at).toLocaleString()}</td>
+                        </tr>
+                    `).join('');
+                }
+
+                // Update errors
+                const errorsTable = document.getElementById('errors-table');
+                if (data.errors.length === 0) {
+                    errorsTable.innerHTML = '<tr><td colspan="4" class="empty-state">✓ No processing errors!</td></tr>';
+                } else {
+                    errorsTable.innerHTML = data.errors.map(error => `
+                        <tr>
+                            <td><strong>${error.subject}</strong></td>
+                            <td>${error.from}</td>
+                            <td>${new Date(error.date).toLocaleString()}</td>
+                            <td><code style="font-size: 0.85rem; color: #ef4444;">${error.error || 'Unknown error'}</code></td>
+                        </tr>
+                    `).join('');
+                }
+
+            } catch (error) {
+                console.error('Error loading email health data:', error);
+                alert('Error loading email health data. Check console for details.');
+            }
+        }
+
+        // Load data on page load
+        loadLastScanTime();
+        loadData();
+
+        // Auto-refresh every 5 minutes
+        setInterval(() => {
+            loadData();
+            loadLastScanTime();
+        }, 5 * 60 * 1000);
+        
+        // Update last scan time every minute
+        setInterval(loadLastScanTime, 60 * 1000);
+    </script>
+</body>
+</html>

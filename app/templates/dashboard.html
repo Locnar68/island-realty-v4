@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Island Advantage Property Management</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a3a52 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .top-controls {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .control-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 15px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .control-group label {
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+        .search-input, .email-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+        .search-input:focus, .email-input:focus {
+            outline: none;
+            border-color: #1a3a52;
+        }
+        
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .filter-section { margin-bottom: 20px; }
+        .filter-section h3 {
+            color: #1a3a52;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+        .filter-buttons, .sort-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .filter-btn {
+            padding: 8px 16px;
+            border: 2px solid #1a3a52;
+            background: white;
+            color: #1a3a52;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .filter-btn:hover { background: #f0f4ff; transform: translateY(-2px); }
+        .filter-btn.active { background: #1a3a52; color: white; }
+        
+        .sort-btn {
+            padding: 8px 16px;
+            border: 2px solid #c8102e;
+            background: white;
+            color: #c8102e;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .sort-btn:hover { background: #fff0f0; transform: translateY(-2px); }
+        .sort-btn.active { background: #c8102e; color: white; }
+        
+        .properties-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 25px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .property-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+        }
+        .property-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 12px rgba(0,0,0,0.2);
+        }
+        .property-card.hold-harmless { border: 3px solid #ff6b6b; }
+        
+        .property-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+        .property-title {
+            font-size: 1.15em;
+            font-weight: bold;
+            color: #1a3a52;
+            flex: 1;
+        }
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 5px;
+            font-size: 0.8em;
+            font-weight: 600;
+            text-transform: uppercase;
+            white-space: nowrap;
+            margin-left: 10px;
+        }
+        
+        .status-active { background: #28a745; color: white; }
+        .status-price-reduced, .status-price-reduction { background: #ffc107; color: #333; }
+        .status-highest-best, .status-highest-and-best { background: #17a2b8; color: white; }
+        .status-first-accepted { background: #20c997; color: white; }
+        .status-auction-available { background: #007bff; color: white; }
+        .status-in-contract { background: #fd7e14; color: white; }
+        .status-pending { background: #fd7e14; color: white; }
+        .status-sold { background: #dc3545; color: white; }
+        .status-t-o-t-m, .status-totm { background: #ff8c00; color: white; }
+        .status-bom, .status-back-on-market { background: #fd7e14; color: white; }
+        
+        .hold-harmless-warning {
+            background: #ff6b6b;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-weight: 600;
+            font-size: 0.9em;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+
+        /* ====== DOCUMENT QUICK-ACCESS BUTTONS ====== */
+        .doc-links-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .btn-doc-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border: 2px solid;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        .btn-doc-link:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        }
+        .btn-hold-harmless {
+            border-color: #ff6b6b;
+            background: #fff5f5;
+            color: #c0392b;
+        }
+        .btn-hold-harmless:hover {
+            background: #ff6b6b;
+            color: white;
+        }
+        .btn-foil {
+            border-color: #c8102e;
+            background: #fff0f3;
+            color: #c8102e;
+        }
+        .btn-foil:hover {
+            background: #c8102e;
+            color: white;
+        }
+        .btn-doc-link.disabled {
+            border-color: #dee2e6;
+            background: #f8f9fa;
+            color: #adb5bd;
+            cursor: default;
+            pointer-events: none;
+        }
+
+        /* ====== ATTACHMENT BUTTON ROW - FRONT OF CARD ====== */
+        .card-action-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .btn-attachments {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border: 2px solid #1a3a52;
+            background: #1a3a52;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            flex: 1;
+        }
+        .btn-attachments:hover {
+            background: #0d2133;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+        .btn-attachments.has-foil {
+            border-color: #c8102e;
+            background: #c8102e;
+        }
+        .btn-attachments.has-foil:hover {
+            background: #a00d24;
+        }
+        .btn-attachments.no-attachments {
+            background: #e9ecef;
+            border-color: #dee2e6;
+            color: #999;
+            cursor: default;
+        }
+        .btn-attachments .att-icon { font-size: 1.2em; }
+        .btn-attachments .att-count {
+            background: rgba(255,255,255,0.25);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.85em;
+        }
+        
+        .foil-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #c8102e;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.78em;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn-email-fwd {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 14px;
+            border: 2px solid #6c757d;
+            background: white;
+            color: #6c757d;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .btn-email-fwd:hover {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .property-details {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .detail-row {
+            display: grid;
+            grid-template-columns: 140px 1fr;
+            gap: 10px;
+        }
+        .detail-label {
+            font-size: 0.85em;
+            color: #666;
+            font-weight: 600;
+        }
+        .detail-value {
+            font-size: 0.95em;
+            color: #333;
+            font-weight: 500;
+        }
+        .price {
+            color: #c8102e;
+            font-size: 1.4em;
+            font-weight: bold;
+        }
+        .email-count {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #eee;
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        /* ====== MODALS ====== */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0; top: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            animation: fadeIn 0.3s;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s;
+        }
+        @keyframes slideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .modal-header h2 { color: #1a3a52; font-size: 1.5em; }
+        .close {
+            font-size: 2em;
+            font-weight: bold;
+            color: #aaa;
+            cursor: pointer;
+            line-height: 1;
+        }
+        .close:hover { color: #000; }
+        .modal-body { margin-bottom: 20px; }
+        
+        .form-group { margin-bottom: 20px; }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+            background: white;
+            cursor: pointer;
+        }
+        .form-group select:focus {
+            outline: none;
+            border-color: #1a3a52;
+        }
+        
+        .btn-forward {
+            width: 100%;
+            padding: 12px;
+            background: #c8102e;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        .btn-forward:hover { background: #a00d24; }
+        .btn-forward:disabled { background: #ccc; cursor: not-allowed; }
+        
+        /* Attachment list in modal */
+        .att-list {
+            max-height: 250px;
+            overflow-y: auto;
+            margin: 15px 0;
+        }
+        .att-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 0.9em;
+        }
+        .att-item:last-child { border-bottom: none; }
+        .att-item .att-name { color: #333; flex: 1; }
+        .att-item .att-tag {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        .att-tag.foil { background: #c8102e; color: white; }
+        .att-tag.general { background: #e9ecef; color: #666; }
+        
+        .btn-send-all {
+            width: 100%;
+            padding: 14px;
+            background: #1a3a52;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        .btn-send-all:hover { background: #0d2133; }
+        .btn-send-all:disabled { background: #ccc; cursor: not-allowed; }
+        .btn-send-all.sending { background: #ffc107; color: #333; }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 1.2em;
+        }
+        .error {
+            text-align: center;
+            padding: 40px;
+            color: #dc3545;
+            font-size: 1.2em;
+            background: white;
+            border-radius: 10px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 16px 24px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 2000;
+            animation: slideUp 0.3s ease;
+        }
+        .toast.success { background: #28a745; }
+        .toast.error { background: #dc3545; }
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+            .control-row { grid-template-columns: 1fr; }
+            .detail-row { grid-template-columns: 1fr; }
+            .properties-grid { grid-template-columns: 1fr; }
+            .card-action-row { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏝️ Island Advantage Property Management</h1>
+        <p>Real-time REO Property Tracking System</p>
+        <div style="margin-top: 1.5rem;">
+            <a href="/admin" style="display: inline-block; padding: 0.75rem 1.5rem; background: rgba(255,255,255,0.2); color: white; text-decoration: none; border-radius: 5px; font-weight: 600; transition: background 0.2s;">
+                🔧 Admin Dashboard
+            </a>
+        </div>
+    </div>
+
+    <div class="top-controls">
+        <div class="control-row">
+            <div class="control-group">
+                <label for="searchInput">🔍 Search Properties</label>
+                <input type="text" id="searchInput" class="search-input" placeholder="Search by address, city, financing...">
+            </div>
+            <div class="control-group">
+                <label for="recipientEmail">📧 Agent Email (for forwarding)</label>
+                <input type="email" id="recipientEmail" class="email-input" placeholder="agent@email.com" value="">
+            </div>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <div class="filter-section">
+            <h3>Filter by Status</h3>
+            <div class="filter-buttons">
+                <button class="filter-btn active" data-status="all">All Properties</button>
+                <button class="filter-btn" data-status="Active">Active</button>
+                <button class="filter-btn" data-status="Auction Available">Auction</button>
+                <button class="filter-btn" data-status="Price Reduced">Price Reduced</button>
+                <button class="filter-btn" data-status="First Accepted">First Accepted</button>
+                <button class="filter-btn" data-status="In Contract">In Contract</button>
+                <button class="filter-btn" data-status="Sold">Sold</button>
+                <button class="filter-btn" data-status="has_attachments">Has Attachments</button>
+                <button class="filter-btn" data-status="has_foil">Has FOIL</button>
+            </div>
+        </div>
+        
+        <div class="filter-section">
+            <h3>Sort Properties</h3>
+            <div class="sort-buttons">
+                <button class="sort-btn active" data-sort="recent">Most Recent</button>
+                <button class="sort-btn" data-sort="oldest">Oldest First</button>
+                <button class="sort-btn" data-sort="price-high">Highest Price</button>
+                <button class="sort-btn" data-sort="price-low">Lowest Price</button>
+                <button class="sort-btn" data-sort="attachments">Most Attachments</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="properties-container">
+        <div class="loading">Loading properties...</div>
+    </div>
+    
+    <!-- Attachment Modal -->
+    <div id="attachModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="attachModalTitle">📎 Property Attachments</h2>
+                <span class="close" id="attachClose">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="attachList" class="att-list">
+                    <p>Loading attachments...</p>
+                </div>
+                <button id="sendAllBtn" class="btn-send-all" disabled>
+                    📧 Email All Attachments to Agent
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Email Forward Modal -->
+    <div id="emailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Forward Property Email</h2>
+                <span class="close" id="emailClose">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 20px; color: #666;">Select an email to forward:</p>
+                <div class="form-group">
+                    <label for="emailSelect">Available Emails:</label>
+                    <select id="emailSelect" size="5">
+                        <option value="">Loading emails...</option>
+                    </select>
+                </div>
+                <button id="forwardBtn" class="btn-forward" disabled>Forward Selected Email</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allProperties = [];
+        let currentFilter = 'all';
+        let currentSort = 'recent';
+        let currentSearch = '';
+        let selectedProperty = null;
+        let propertyEmailCounts = {};
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            loadProperties();
+            setupEventListeners();
+        });
+        
+        function setupEventListeners() {
+            document.getElementById('searchInput').addEventListener('input', function(e) {
+                currentSearch = e.target.value.toLowerCase();
+                renderProperties();
+            });
+
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentFilter = this.dataset.status;
+                    renderProperties();
+                });
+            });
+            
+            document.querySelectorAll('.sort-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentSort = this.dataset.sort;
+                    renderProperties();
+                });
+            });
+            
+            // Attachment modal
+            document.getElementById('attachClose').addEventListener('click', () => {
+                document.getElementById('attachModal').style.display = 'none';
+            });
+            document.getElementById('sendAllBtn').addEventListener('click', sendAllAttachments);
+            
+            // Email modal
+            document.getElementById('emailClose').addEventListener('click', () => {
+                document.getElementById('emailModal').style.display = 'none';
+            });
+            document.getElementById('emailSelect').addEventListener('change', function() {
+                document.getElementById('forwardBtn').disabled = !this.value;
+            });
+            document.getElementById('forwardBtn').addEventListener('click', forwardEmail);
+            
+            // Close modals on background click
+            window.addEventListener('click', function(event) {
+                if (event.target == document.getElementById('attachModal')) {
+                    document.getElementById('attachModal').style.display = 'none';
+                }
+                if (event.target == document.getElementById('emailModal')) {
+                    document.getElementById('emailModal').style.display = 'none';
+                }
+            });
+        }
+        
+        async function loadProperties() {
+            try {
+                const response = await fetch('/api/properties');
+                if (!response.ok) throw new Error('Failed to load properties');
+                const data = await response.json();
+                
+                allProperties = Array.isArray(data) ? data : (data.properties || []);
+                
+                await loadEmailCounts();
+                
+                console.log(`Loaded ${allProperties.length} properties`);
+                renderProperties();
+            } catch (error) {
+                console.error('Load error:', error);
+                document.getElementById('properties-container').innerHTML = 
+                    `<div class="error">Error loading properties: ${error.message}</div>`;
+            }
+        }
+
+        async function loadEmailCounts() {
+            const promises = allProperties.map(async (property) => {
+                try {
+                    const response = await fetch(`/api/properties/${property.id}/emails`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        propertyEmailCounts[property.id] = (data.emails || []).length;
+                    }
+                } catch (error) {
+                    propertyEmailCounts[property.id] = 0;
+                }
+            });
+            await Promise.all(promises);
+        }
+        
+        function normalizeStatus(status) {
+            if (!status) return '';
+            // Normalize variant status labels to canonical forms
+            let normalized = status;
+            if (normalized === '1st Accept' || normalized === '1st Accepted') {
+                normalized = 'First Accepted';
+            }
+            if (normalized === 'Available') {
+                normalized = 'Auction Available';
+            }
+            return normalized.toLowerCase().replace(/\s+/g, '-').replace(/&/g, 'and');
+        }
+        
+        function displayStatus(status) {
+            if (!status) return 'Unknown';
+            if (status === '1st Accept' || status === '1st Accepted') return 'First Accepted';
+            return status;
+        }
+        
+        function filterProperties() {
+            let filtered = allProperties;
+
+            if (currentFilter === 'has_attachments') {
+                filtered = filtered.filter(p => (p.total_attachments || p.attachment_count || 0) > 0);
+            } else if (currentFilter === 'has_foil') {
+                filtered = filtered.filter(p => (p.foil_count || 0) > 0);
+            } else if (currentFilter !== 'all') {
+                filtered = filtered.filter(p => {
+                    const pStatus = displayStatus(p.current_status);
+                    return pStatus === currentFilter;
+                });
+            }
+
+            if (currentSearch) {
+                filtered = filtered.filter(property => {
+                    const searchStr = `${property.address} ${property.current_status} ${property.financing_type || ''} ${property.agent_access || ''} ${property.occupancy_status || ''}`.toLowerCase();
+                    return searchStr.includes(currentSearch);
+                });
+            }
+
+            return filtered;
+        }
+        
+        function sortProperties(properties) {
+            const sorted = [...properties];
+            switch(currentSort) {
+                case 'recent':
+                    sorted.sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
+                    break;
+                case 'oldest':
+                    sorted.sort((a, b) => new Date(a.updated_at || a.created_at) - new Date(b.updated_at || b.created_at));
+                    break;
+                case 'price-high':
+                    sorted.sort((a, b) => (parseFloat(b.current_list_price) || 0) - (parseFloat(a.current_list_price) || 0));
+                    break;
+                case 'price-low':
+                    sorted.sort((a, b) => (parseFloat(a.current_list_price) || 0) - (parseFloat(b.current_list_price) || 0));
+                    break;
+                case 'attachments':
+                    sorted.sort((a, b) => (b.total_attachments || 0) - (a.total_attachments || 0));
+                    break;
+            }
+            return sorted;
+        }
+        
+        function renderProperties() {
+            const filtered = filterProperties();
+            const sorted = sortProperties(filtered);
+            
+            if (sorted.length === 0) {
+                document.getElementById('properties-container').innerHTML = 
+                    '<div class="loading">No properties found for this filter.</div>';
+                return;
+            }
+            
+            const html = `
+                <div class="properties-grid">
+                    ${sorted.map(p => createPropertyCard(p)).join('')}
+                </div>
+            `;
+            document.getElementById('properties-container').innerHTML = html;
+        }
+        
+        function createPropertyCard(property) {
+            const statusClass = 'status-' + normalizeStatus(property.current_status);
+            const price = property.current_list_price ? 
+                `$${parseInt(property.current_list_price).toLocaleString()}` : 'N/A';
+            const emailCount = propertyEmailCounts[property.id] || 0;
+            const holdHarmless = property.hold_harmless_required || property.agent_access === 'Proceed (Hold Harmless)';
+            const attCount = property.total_attachments || 0;
+            const foilCount = property.foil_count || 0;
+            
+            const holdHarmlessWarning = holdHarmless ? 
+                '<div class="hold-harmless-warning">⚠️ HOLD HARMLESS REQUIRED</div>' : '';
+            const cardClass = holdHarmless ? 'property-card hold-harmless' : 'property-card';
+            
+            // Attachment button styling
+            let attBtnClass = 'btn-attachments';
+            let attBtnLabel = '';
+            let attBtnIcon = '📎';
+            
+            if (attCount === 0) {
+                attBtnClass += ' no-attachments';
+                attBtnLabel = 'No Attachments';
+            } else if (foilCount > 0) {
+                attBtnClass += ' has-foil';
+                attBtnIcon = '🔴';
+                attBtnLabel = `${attCount} Attachment${attCount > 1 ? 's' : ''}`;
+            } else {
+                attBtnLabel = `${attCount} Attachment${attCount > 1 ? 's' : ''}`;
+            }
+            
+            const foilBadge = foilCount > 0 ? 
+                `<span class="foil-badge">FOIL ${foilCount}</span>` : '';
+            
+            return `
+                <div class="${cardClass}">
+                    ${holdHarmlessWarning}
+                    <div class="property-header">
+                        <div class="property-title">${property.address || 'Address not available'}</div>
+                        <div class="status-badge ${statusClass}">${displayStatus(property.current_status || property.status)}</div>
+                    </div>
+                    
+                    <div class="doc-links-row">
+                        ${property.hh_attachment_id ? 
+                            '<a class="btn-doc-link btn-hold-harmless" href="/api/attachments/' + property.hh_attachment_id + '/view" target="_blank" title="View Hold-Harmless Document">📋 Hold-Harmless</a>' :
+                            (holdHarmless ? '<span class="btn-doc-link btn-hold-harmless disabled" title="Hold-Harmless required but no document uploaded yet">📋 Hold-Harmless (N/A)</span>' : '')
+                        }
+                        ${property.foil_attachment_id ? 
+                            '<a class="btn-doc-link btn-foil" href="/api/attachments/' + property.foil_attachment_id + '/view" target="_blank" title="View FOIL Document">📄 FOIL</a>' : 
+                            ''
+                        }
+                    </div>
+                    <div class="card-action-row">
+                        <button class="${attBtnClass}" 
+                                onclick="openAttachmentModal(${property.id})" 
+                                ${attCount === 0 ? 'disabled' : ''}>
+                            <span class="att-icon">${attBtnIcon}</span>
+                            <span>${attBtnLabel}</span>
+                            ${foilBadge}
+                        </button>
+                        <button class="btn-email-fwd" onclick="openEmailModal(${property.id})">
+                            📧 Emails
+                        </button>
+                    </div>
+                    
+                    <div class="property-details">
+                        <div class="detail-row">
+                            <div class="detail-label">Price:</div>
+                            <div class="detail-value price">${price}</div>
+                        </div>
+                        ${property.financing_type ? `
+                        <div class="detail-row">
+                            <div class="detail-label">Financing:</div>
+                            <div class="detail-value">${property.financing_type}</div>
+                        </div>` : ''}
+                        ${property.seller_agent_compensation ? `
+                        <div class="detail-row">
+                            <div class="detail-label">Agent Comp:</div>
+                            <div class="detail-value">${property.seller_agent_compensation}</div>
+                        </div>` : ''}
+                        ${property.agent_access ? `
+                        <div class="detail-row">
+                            <div class="detail-label">Access:</div>
+                            <div class="detail-value">${property.agent_access}</div>
+                        </div>` : ''}
+                        ${property.occupancy_status ? `
+                        <div class="detail-row">
+                            <div class="detail-label">Occupancy:</div>
+                            <div class="detail-value">${property.occupancy_status}</div>
+                        </div>` : ''}
+                        <div class="detail-row">
+                            <div class="detail-label">Last Updated:</div>
+                            <div class="detail-value">${formatDate(property.updated_at || property.created_at)}</div>
+                        </div>
+                    </div>
+                    <div class="email-count">
+                        📧 ${emailCount} email${emailCount !== 1 ? 's' : ''} tracked
+                    </div>
+                </div>
+            `;
+        }
+        
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+        
+        // ====== ATTACHMENT MODAL ======
+        async function openAttachmentModal(propertyId) {
+            selectedProperty = allProperties.find(p => p.id == propertyId);
+            if (!selectedProperty) return;
+            
+            const modal = document.getElementById('attachModal');
+            const list = document.getElementById('attachList');
+            const btn = document.getElementById('sendAllBtn');
+            
+            modal.style.display = 'block';
+            list.innerHTML = '<p style="text-align:center;color:#999;">Loading attachments...</p>';
+            btn.disabled = true;
+            
+            document.getElementById('attachModalTitle').textContent = 
+                `📎 Attachments: ${selectedProperty.address || 'Property'}`;
+            
+            try {
+                const response = await fetch(`/api/properties/${propertyId}/attachments`);
+                if (!response.ok) throw new Error('Failed to load attachments');
+                const data = await response.json();
+                
+                const attachments = data.attachments || [];
+                
+                if (attachments.length === 0) {
+                    list.innerHTML = '<p style="text-align:center;color:#999;">No attachments found.</p>';
+                    return;
+                }
+                
+                list.innerHTML = attachments.map(att => {
+                    const tagClass = att.is_foil ? 'foil' : 'general';
+                    const tagText = att.is_foil ? 'FOIL' : att.category;
+                    const size = att.file_size ? `(${(att.file_size / 1024).toFixed(0)} KB)` : '';
+                    const fromEmail = att.email_subject ? `<div style="font-size:0.8em;color:#999;margin-top:2px;">From: ${att.email_subject}</div>` : '';
+                    
+                    return `
+                        <div class="att-item">
+                            <div>
+                                <div class="att-name">📄 ${att.filename} ${size}</div>
+                                ${fromEmail}
+                            </div>
+                            <span class="att-tag ${tagClass}">${tagText}</span>
+                        </div>
+                    `;
+                }).join('');
+                
+                const foilCount = data.foil_count || 0;
+                const foilNote = foilCount > 0 ? ` (includes ${foilCount} FOIL)` : '';
+                btn.textContent = `📧 Email All ${attachments.length} Attachments${foilNote}`;
+                btn.disabled = false;
+                
+            } catch (error) {
+                list.innerHTML = `<p style="text-align:center;color:#dc3545;">Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function sendAllAttachments() {
+            if (!selectedProperty) return;
+            
+            const agentEmail = document.getElementById('recipientEmail').value.trim();
+            if (!agentEmail) {
+                showToast('Please enter agent email address in the top bar first', 'error');
+                return;
+            }
+            
+            const btn = document.getElementById('sendAllBtn');
+            btn.disabled = true;
+            btn.classList.add('sending');
+            btn.textContent = '⏳ Sending attachments...';
+            
+            try {
+                const response = await fetch('/api/forward-attachments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        property_id: selectedProperty.id,
+                        agent_email: agentEmail
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) throw new Error(result.error || 'Failed to send');
+                
+                showToast(`✅ ${result.attachments_sent} attachments sent to ${agentEmail}`, 'success');
+                document.getElementById('attachModal').style.display = 'none';
+                
+            } catch (error) {
+                showToast(`❌ Error: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('sending');
+                btn.textContent = '📧 Email All Attachments to Agent';
+            }
+        }
+        
+        // ====== EMAIL FORWARD MODAL ======
+        async function openEmailModal(propertyId) {
+            selectedProperty = allProperties.find(p => p.id == propertyId);
+            if (!selectedProperty) return;
+            
+            document.getElementById('emailModal').style.display = 'block';
+            document.getElementById('emailSelect').innerHTML = '<option value="">Loading emails...</option>';
+            document.getElementById('forwardBtn').disabled = true;
+            
+            try {
+                const response = await fetch(`/api/properties/${propertyId}/emails`);
+                if (!response.ok) throw new Error('Failed to load emails');
+                const data = await response.json();
+                
+                const emails = data.emails || [];
+                
+                if (emails.length === 0) {
+                    document.getElementById('emailSelect').innerHTML = '<option value="">No emails available</option>';
+                    return;
+                }
+                
+                document.getElementById('emailSelect').innerHTML = emails.map(email => {
+                    let dateStr = 'No date';
+                    if (email.email_date) {
+                        const date = new Date(email.email_date);
+                        dateStr = date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
+                    }
+                    const subject = email.email_subject || 'No subject';
+                    const truncated = subject.length > 40 ? subject.substring(0, 40) + '...' : subject;
+                    const attNote = email.has_attachments ? ` 📎${email.attachment_count}` : '';
+                    
+                    return `<option value="${email.id}">${dateStr} - ${truncated}${attNote}</option>`;
+                }).join('');
+                
+            } catch (error) {
+                document.getElementById('emailSelect').innerHTML = `<option value="">Error: ${error.message}</option>`;
+            }
+        }
+        
+        async function forwardEmail() {
+            const emailId = document.getElementById('emailSelect').value;
+            const recipientEmail = document.getElementById('recipientEmail').value.trim();
+            
+            if (!emailId || !selectedProperty || !recipientEmail) {
+                showToast('Please enter your email and select an email to forward', 'error');
+                return;
+            }
+            
+            const btn = document.getElementById('forwardBtn');
+            btn.disabled = true;
+            btn.textContent = 'Forwarding...';
+            
+            try {
+                const response = await fetch('/api/email-property-by-email-id', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email_id: emailId,
+                        agent_email: recipientEmail,
+                        property_id: selectedProperty.id
+                    })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to forward email');
+                }
+                
+                showToast('✅ Email forwarded to ' + recipientEmail, 'success');
+                document.getElementById('emailModal').style.display = 'none';
+                
+            } catch (error) {
+                showToast('❌ ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Forward Selected Email';
+            }
+        }
+        
+        function showToast(message, type) {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+    </script>
+</body>
+</html>
+
