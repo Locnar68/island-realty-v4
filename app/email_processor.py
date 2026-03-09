@@ -5,11 +5,12 @@ Extracts comprehensive property data, status changes, flags, and compliance info
 STATUS MAPPING (aligned with Phase 4.1 requirements):
 - Available / New Listing → Active
 - Auction Available → Auction Available  
-- Price Reduced → Price Reduced
+- Price Reduced → do NOT set status to Price Reduced; set new_status to null and update price only
 - 1st Accept → First Accepted
 - Pending / Contract Executed → In Contract
 - Back on Market → Active (ALWAYS resets to Active)
 - Sold → Sold
+- T-O-T-M / Temporarily Off the Market → TOTM
 """
 
 import os
@@ -121,10 +122,12 @@ EXTRACTION REQUIREMENTS:
    **CRITICAL: Use ONLY these exact status values:**
    - "Active" - New listing / origination / available / back on market
    - "Auction Available" - Auction property / auction listing
-   - "Price Reduced" - Price drop from original
+   - NOTE: Do NOT use "Price Reduced" as a status. If email is a price reduction, set new_status=null and only update current_list_price.
    - "First Accepted" - Offer accepted / 1st accepted but not yet in contract
    - "In Contract" - Under contract / contract executed / pending
    - "Sold" - Closed successfully / sold
+   - "Highest & Best" - Multiple offers received, highest and best deadline set
+   - "TOTM" - Temporarily off the market (T-O-T-M)
    
    **IMPORTANT RULES:**
    - "Back on Market" emails should ALWAYS result in "Active" status
@@ -132,6 +135,8 @@ EXTRACTION REQUIREMENTS:
    - "Auction" or "Auction Available" = "Auction Available"
    - "1st Accept" or "Offer Accepted" (without contract) = "First Accepted"
    - "Under Contract" or "Contract Executed" or "Pending" = "In Contract"
+   - "Highest and Best" or "Highest & Best" or multiple offers with deadline = "Highest & Best"
+   - "T-O-T-M" or "Temporarily Off the Market" or "TOTM" = "TOTM"
 
 4. ACCESS & OCCUPANCY FLAGS (boolean true/false):
    - is_occupied: Property is occupied by tenant/owner
@@ -185,7 +190,7 @@ RESPONSE FORMAT (valid JSON only):
     "original_list_price": number or null
   }},
   "status_change": {{
-    "new_status": "string or null (MUST be one of: Active, Auction Available, Price Reduced, First Accepted, In Contract, Sold)",
+    "new_status": "string or null (MUST be one of: Active, Auction Available, First Accepted, In Contract, Sold, Highest & Best, TOTM — do NOT use Price Reduced)",
     "confidence": "high/medium/low",
     "reasoning": "why this status was chosen"
   }},
@@ -268,13 +273,17 @@ Return ONLY valid JSON, no additional text."""
         elif any(word in subject_lower for word in ['auction', 'auction available']):
             return 'Auction Available'
         elif any(word in subject_lower for word in ['price reduction', 'price change', 'reduced']):
-            return 'Price Reduced'
+            return None  # Price reduction: update price only, do NOT change status
         elif any(word in subject_lower for word in ['offer accepted', '1st accepted', 'accepted offer', '1st accept']):
             return 'First Accepted'
         elif any(word in subject_lower for word in ['under contract', 'contract executed', 'in contract', 'pending']):
             return 'In Contract'
+        elif any(phrase in subject_lower for phrase in ['highest and best', 'highest & best', 'highest & best', 'h&b due', 'h and b']):
+            return 'Highest & Best'
         elif any(word in subject_lower for word in ['closed', 'sold', 'closing']):
             return 'Sold'
+        elif any(word in subject_lower for word in ['t-o-t-m', 'totm', 'temporarily off']):
+            return 'TOTM'
         
         return None
     
@@ -307,7 +316,7 @@ Return ONLY valid JSON, no additional text."""
         # If status change, must have a valid status
         if data.get('status_change'):
             status = data['status_change'].get('new_status')
-            valid_statuses = ['Active', 'Auction Available', 'Price Reduced', 'First Accepted', 'In Contract', 'Sold']
+            valid_statuses = ['Active', 'Auction Available', 'First Accepted', 'In Contract', 'Sold', 'Highest & Best', 'TOTM']
             if status and status not in valid_statuses:
                 errors.append(f"Invalid status: {status}. Must be one of: {', '.join(valid_statuses)}")
         
@@ -323,12 +332,14 @@ class StatusFlowValidator:
     """Validate status transitions follow business rules"""
     
     VALID_TRANSITIONS = {
-        'Active': ['Price Reduced', 'First Accepted', 'In Contract', 'Sold', 'Auction Available'],
-        'Auction Available': ['First Accepted', 'In Contract', 'Active', 'Sold'],
-        'Price Reduced': ['First Accepted', 'In Contract', 'Sold', 'Active'],
+        'Active': ['First Accepted', 'In Contract', 'Sold', 'Auction Available', 'Highest & Best'],
+        'Auction Available': ['First Accepted', 'In Contract', 'Active', 'Sold', 'Highest & Best'],
+        # Price Reduced status removed - price reductions keep current status
         'First Accepted': ['In Contract', 'Active'],
         'In Contract': ['Sold', 'Active'],
-        'Sold': []  # Final status, no transitions
+        'Sold': [],  # Final status, no transitions
+        'Highest & Best': ['First Accepted', 'In Contract', 'Active', 'Sold'],
+        'TOTM': ['Active', 'First Accepted', 'Sold'],  # Can come back on market or sell
     }
     
     @classmethod
@@ -342,6 +353,10 @@ class StatusFlowValidator:
         
         # Back on Market always allows transition to Active
         if new_status == 'Active':
+            return True
+        
+        # Any status can transition to TOTM
+        if new_status == 'TOTM':
             return True
         
         return new_status in cls.VALID_TRANSITIONS[old_status]

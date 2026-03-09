@@ -237,8 +237,15 @@ def _save_to_database_enhanced(self, email_data, extracted_data):
                   has_attachments, attachment_count, attachment_names))
             actions.append('email_linked')
             
-            # 3. Save attachments with PROPER FOIL CATEGORIZATION
+            # 3. Save attachments with PROPER FOIL CATEGORIZATION (PDF only)
             for att in email_data.get('attachments', []):
+                # PDF-only policy: skip images and other non-PDF files
+                _mime = att.get('mimeType', '')
+                _fname = att.get('filename', '')
+                if not (_mime == 'application/pdf' or _fname.lower().endswith('.pdf')):
+                    logger.info(f"  ⏭️ Skipping non-PDF attachment: {_fname} ({_mime})")
+                    continue
+
                 is_foil = att.get('is_foil', False)
                 
                 # Determine category

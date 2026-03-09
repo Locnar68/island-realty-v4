@@ -156,6 +156,17 @@
         .status-active { background: #28a745; color: white; }
         .status-price-reduced, .status-price-reduction { background: #ffc107; color: #333; }
         .status-highest-best, .status-highest-and-best { background: #17a2b8; color: white; }
+        .hb-due-date { 
+            background: #e8f4fd; 
+            border-left: 3px solid #17a2b8; 
+            padding: 6px 10px; 
+            margin: 6px 0; 
+            font-size: 0.85em; 
+            color: #1a3a52;
+            border-radius: 0 4px 4px 0;
+        }
+        .hb-due-date .hb-label { font-weight: 600; color: #17a2b8; }
+        .hb-due-date .hb-urgent { color: #dc3545; font-weight: 700; }
         .status-first-accepted { background: #20c997; color: white; }
         .status-auction-available { background: #007bff; color: white; }
         .status-in-contract { background: #fd7e14; color: white; }
@@ -446,6 +457,71 @@
         .att-tag.foil { background: #c8102e; color: white; }
         .att-tag.general { background: #e9ecef; color: #666; }
         
+        /* Enhanced attachment items with download links */
+        .att-item-foil {
+            background: #fff5f6;
+            border-left: 4px solid #c8102e;
+            border-radius: 4px;
+            margin-bottom: 4px;
+        }
+        .att-foil-banner {
+            background: #c8102e;
+            color: white;
+            font-size: 0.78em;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            padding: 3px 10px;
+            border-radius: 3px 3px 0 0;
+        }
+        .att-item-main {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+        }
+        .att-actions {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+            margin-left: 10px;
+        }
+        .att-action-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.8em;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+        .att-view-btn {
+            border: 1.5px solid #1a3a52;
+            background: white;
+            color: #1a3a52;
+        }
+        .att-view-btn:hover {
+            background: #1a3a52;
+            color: white;
+        }
+        .att-download-btn {
+            border: 1.5px solid #c8102e;
+            background: #c8102e;
+            color: white;
+        }
+        .att-download-btn:hover {
+            background: #a00d24;
+        }
+        .att-no-access {
+            font-size: 0.78em;
+            color: #aaa;
+            margin-left: 10px;
+            flex-shrink: 0;
+        }
+        
         .btn-send-all {
             width: 100%;
             padding: 14px;
@@ -536,10 +612,11 @@
                 <button class="filter-btn active" data-status="all">All Properties</button>
                 <button class="filter-btn" data-status="Active">Active</button>
                 <button class="filter-btn" data-status="Auction Available">Auction</button>
-                <button class="filter-btn" data-status="Price Reduced">Price Reduced</button>
                 <button class="filter-btn" data-status="First Accepted">First Accepted</button>
+                <button class="filter-btn" data-status="Highest & Best">Highest & Best</button>
                 <button class="filter-btn" data-status="In Contract">In Contract</button>
                 <button class="filter-btn" data-status="Sold">Sold</button>
+                <button class="filter-btn" data-status="TOTM">TOTM</button>
                 <button class="filter-btn" data-status="has_attachments">Has Attachments</button>
                 <button class="filter-btn" data-status="has_foil">Has FOIL</button>
             </div>
@@ -553,6 +630,7 @@
                 <button class="sort-btn" data-sort="price-high">Highest Price</button>
                 <button class="sort-btn" data-sort="price-low">Lowest Price</button>
                 <button class="sort-btn" data-sort="attachments">Most Attachments</button>
+                <button class="sort-btn" data-sort="hb-due">H&B Due (Soonest)</button>
             </div>
         </div>
     </div>
@@ -623,6 +701,13 @@
                     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
                     this.classList.add('active');
                     currentFilter = this.dataset.status;
+                    // Auto-sort by H&B due date when that filter is selected
+                    if (currentFilter === 'Highest & Best') {
+                        document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+                        const hbSortBtn = document.querySelector('.sort-btn[data-sort="hb-due"]');
+                        if (hbSortBtn) hbSortBtn.classList.add('active');
+                        currentSort = 'hb-due';
+                    }
                     renderProperties();
                 });
             });
@@ -664,7 +749,8 @@
         
         async function loadProperties() {
             try {
-                const response = await fetch('/api/properties');
+                // Always load with show_totm so admin can see TOTM properties via filter
+                const response = await fetch('/api/properties?show_totm=true');
                 if (!response.ok) throw new Error('Failed to load properties');
                 const data = await response.json();
                 
@@ -703,8 +789,19 @@
             if (normalized === '1st Accept' || normalized === '1st Accepted') {
                 normalized = 'First Accepted';
             }
-            if (normalized === 'Available') {
+            if (normalized === 'Available' || normalized === 'LPP') {
                 normalized = 'Auction Available';
+            }
+            if (normalized === 'Highest and Best' || normalized === 'Highest & Best') {
+                return 'highest-and-best';
+            }
+            if (normalized === 'TOTM' || normalized === 'T-O-T-M' || normalized.toLowerCase() === 'temporarily off the market') {
+                return 'totm';
+            }
+            // All In Contract / Pending variants → same CSS class
+            const lc = normalized.toLowerCase();
+            if (lc === 'in contract' || lc === 'pending' || lc === 'under contract' || lc === 'pended') {
+                return 'in-contract';
             }
             return normalized.toLowerCase().replace(/\s+/g, '-').replace(/&/g, 'and');
         }
@@ -712,6 +809,12 @@
         function displayStatus(status) {
             if (!status) return 'Unknown';
             if (status === '1st Accept' || status === '1st Accepted') return 'First Accepted';
+            if (status === 'T-O-T-M' || status.toLowerCase() === 'temporarily off the market') return 'TOTM';
+            // All "In Contract" variants → display as "In Contract"
+            const lc = status.toLowerCase();
+            if (lc === 'pending' || lc === 'under contract' || lc === 'in contract' || lc === 'pended') return 'In Contract';
+            // Available aliases
+            if (status === 'Available' || status === 'LPP') return 'Auction Available';
             return status;
         }
         
@@ -719,19 +822,26 @@
             let filtered = allProperties;
 
             if (currentFilter === 'has_attachments') {
-                filtered = filtered.filter(p => (p.total_attachments || p.attachment_count || 0) > 0);
+                // Hide TOTM from attachment filter too
+                filtered = filtered.filter(p => (p.total_attachments || p.attachment_count || 0) > 0 && displayStatus(p.current_status) !== 'TOTM');
             } else if (currentFilter === 'has_foil') {
-                filtered = filtered.filter(p => (p.foil_count || 0) > 0);
+                filtered = filtered.filter(p => (p.foil_count || 0) > 0 && displayStatus(p.current_status) !== 'TOTM');
+            } else if (currentFilter === 'TOTM') {
+                // Explicitly show TOTM properties when that filter is selected
+                filtered = filtered.filter(p => displayStatus(p.current_status) === 'TOTM');
             } else if (currentFilter !== 'all') {
                 filtered = filtered.filter(p => {
                     const pStatus = displayStatus(p.current_status);
                     return pStatus === currentFilter;
                 });
+            } else {
+                // "All" filter: hide TOTM properties from public view
+                filtered = filtered.filter(p => displayStatus(p.current_status) !== 'TOTM');
             }
 
             if (currentSearch) {
                 filtered = filtered.filter(property => {
-                    const searchStr = `${property.address} ${property.current_status} ${property.financing_type || ''} ${property.agent_access || ''} ${property.occupancy_status || ''}`.toLowerCase();
+                    const searchStr = `${property.address} ${property.current_status} ${displayStatus(property.current_status)} ${property.financing_type || ''} ${property.agent_access || ''} ${property.occupancy_status || ''}`.toLowerCase();
                     return searchStr.includes(currentSearch);
                 });
             }
@@ -756,6 +866,13 @@
                     break;
                 case 'attachments':
                     sorted.sort((a, b) => (b.total_attachments || 0) - (a.total_attachments || 0));
+                    break;
+                case 'hb-due':
+                    sorted.sort((a, b) => {
+                        const aDate = a.highest_best_due_at ? new Date(a.highest_best_due_at).getTime() : Infinity;
+                        const bDate = b.highest_best_due_at ? new Date(b.highest_best_due_at).getTime() : Infinity;
+                        return aDate - bDate;
+                    });
                     break;
             }
             return sorted;
@@ -872,11 +989,44 @@
                             <div class="detail-value">${formatDate(property.updated_at || property.created_at)}</div>
                         </div>
                     </div>
+                    ${createHBDueSection(property)}
                     <div class="email-count">
                         📧 ${emailCount} email${emailCount !== 1 ? 's' : ''} tracked
                     </div>
                 </div>
             `;
+        }
+        
+        function createHBDueSection(property) {
+            const status = displayStatus(property.current_status || property.status);
+            if (status !== 'Highest & Best') return '';
+            
+            const dueAt = property.highest_best_due_at;
+            if (!dueAt) {
+                return '<div class="hb-due-date"><span class="hb-label">⏰ Highest & Best Due:</span> Not provided</div>';
+            }
+            
+            const dueDate = new Date(dueAt);
+            const now = new Date();
+            const hoursLeft = (dueDate - now) / (1000 * 60 * 60);
+            
+            const formatted = dueDate.toLocaleDateString('en-US', { 
+                month: 'short', day: 'numeric', year: 'numeric' 
+            }) + ' at ' + dueDate.toLocaleTimeString('en-US', { 
+                hour: 'numeric', minute: '2-digit' 
+            });
+            
+            let urgencyClass = '';
+            let urgencyIcon = '⏰';
+            if (hoursLeft < 0) {
+                urgencyClass = 'hb-urgent';
+                urgencyIcon = '⚠️';
+            } else if (hoursLeft < 24) {
+                urgencyClass = 'hb-urgent';
+                urgencyIcon = '🔥';
+            }
+            
+            return `<div class="hb-due-date"><span class="hb-label">${urgencyIcon} Highest & Best Due:</span> <span class="${urgencyClass}">${formatted}</span></div>`;
         }
         
         function formatDate(dateString) {
@@ -917,15 +1067,31 @@
                     const tagClass = att.is_foil ? 'foil' : 'general';
                     const tagText = att.is_foil ? 'FOIL' : att.category;
                     const size = att.file_size ? `(${(att.file_size / 1024).toFixed(0)} KB)` : '';
-                    const fromEmail = att.email_subject ? `<div style="font-size:0.8em;color:#999;margin-top:2px;">From: ${att.email_subject}</div>` : '';
+                    const fromEmail = att.email_subject ? `<div style="font-size:0.8em;color:#999;margin-top:2px;">${att.email_subject}</div>` : '';
+                    const hasGmail = att.gmail_attachment_id && att.gmail_message_id;
+                    
+                    const foilBanner = att.is_foil ? `<div class="att-foil-banner">🔴 FOIL DOCUMENT</div>` : '';
+                    const itemClass = att.is_foil ? 'att-item att-item-foil' : 'att-item';
+                    
+                    const viewBtn = hasGmail ? 
+                        `<a href="/api/attachments/${att.id}/view" target="_blank" class="att-action-btn att-view-btn" title="Open PDF in new tab">👁️ View</a>` : '';
+                    const dlBtn = hasGmail ? 
+                        `<a href="/api/attachments/${att.id}/download" download="${att.filename}" class="att-action-btn att-download-btn" title="Download PDF to your computer">⬇️ Save</a>` : '';
+                    const noAccess = !hasGmail ? `<span class="att-no-access">⚠️ Unavailable</span>` : '';
                     
                     return `
-                        <div class="att-item">
-                            <div>
-                                <div class="att-name">📄 ${att.filename} ${size}</div>
-                                ${fromEmail}
+                        <div class="${itemClass}">
+                            ${foilBanner}
+                            <div class="att-item-main">
+                                <div style="flex:1;min-width:0;">
+                                    <div class="att-name">📄 ${att.filename} ${size}</div>
+                                    ${fromEmail}
+                                </div>
+                                <span class="att-tag ${tagClass}">${tagText}</span>
                             </div>
-                            <span class="att-tag ${tagClass}">${tagText}</span>
+                            <div style="display:flex;align-items:center;gap:6px;padding:0 12px 8px 12px;">
+                                <div class="att-actions">${viewBtn}${dlBtn}${noAccess}</div>
+                            </div>
                         </div>
                     `;
                 }).join('');

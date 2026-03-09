@@ -52,6 +52,32 @@ logger.addHandler(error_handler)
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly',
           'https://www.googleapis.com/auth/gmail.modify']
 
+
+def _normalize_status(s):
+    """Normalize raw status strings (from AI or spreadsheet) to canonical form.
+    Used in both step 5 (status update) and step 6 (price preservation check)
+    so variants like '1st Accept' are always treated as 'First Accepted'.
+    NOTE: 'Price Reduced' is not a valid status - price reductions only update the price,
+    they do not change the status. Any 'Price Reduced' value is mapped to None (no status change).
+    """
+    if not s:
+        return s
+    sl = s.lower().strip()
+    if sl in ('pending', 'under contract', 'pended', 'in contract'):
+        return 'In Contract'
+    if sl in ('available', 'lpp', 'auction/available', 'auction available'):
+        return 'Auction Available'
+    if sl in ('1st accept', '1st accepted', 'first accepted'):
+        return 'First Accepted'
+    if sl in ('t-o-t-m', 'temporarily off the market', 'totm'):
+        return 'TOTM'
+    if sl in ('highest and best', 'highest & best'):
+        return 'Highest & Best'
+    if sl in ('price reduced', 'price reduction', 'reduced'):
+        return None  # Price reductions: update price only, keep existing status
+    return s
+
+
 class EmailMonitorV4:
     """Enhanced email monitor with AI processing for V4"""
     
@@ -96,7 +122,7 @@ class EmailMonitorV4:
                 'Status Update', 'New List Price', 'Price Reduction', 'Price Reduced',
                 'Highest & Best', 'Highest and Best', 'TOTM', 'First Accepted',
                 'Back on the Market', 'BOM', 'Auction Available', 'Temporarily off',
-                'Origination', 'New Listing', 'Back on Market', 'Contract'
+                'Origination', 'New Listing', 'Back on Market', 'Contract', 'T-O-T-M', 'Temporarily off the Market'
             ]
             keyword_query = ' OR '.join([f'subject:"{kw}"' for kw in keywords])
             query_parts.append(f'({keyword_query})')
@@ -223,9 +249,15 @@ class EmailMonitorV4:
                     attachment_id = part['body'].get('attachmentId')
                     is_foil = 'foil' in filename.lower()
                     
+                    # PDF-only policy: skip non-PDF attachments
+                    mime = part.get('mimeType', '')
+                    if not (mime == 'application/pdf' or filename.lower().endswith('.pdf')):
+                        logger.info(f"  ⏭️ Skipping non-PDF attachment: {filename} ({mime})")
+                        continue
+                    
                     attachment = {
                         'filename': filename,
-                        'mimeType': part.get('mimeType', 'application/octet-stream'),
+                        'mimeType': mime or 'application/pdf',
                         'size': part['body'].get('size', 0),
                         'attachmentId': attachment_id,
                         'gmail_message_id': message_id,
@@ -432,35 +464,72 @@ class EmailMonitorV4:
                         WHERE id = %s
                     """, (property_id, email_data['id'], property_id))
                 
-                # 5. Handle status change
+                # 5. Handle status change (with price protection & TOTM support)
+                # NOTE: _normalize_status() is a module-level function available here and in step 6
                 status_change = extracted_data.get('status_change')
+                normalized_new_status = None  # will be set below if status_change present
                 if status_change and status_change.get('new_status'):
-                    new_status = status_change['new_status']
-                    cursor.execute("SELECT current_status FROM properties WHERE id = %s", (property_id,))
+                    normalized_new_status = _normalize_status(status_change['new_status'])
+                    cursor.execute("SELECT current_status, current_list_price FROM properties WHERE id = %s", (property_id,))
                     current = cursor.fetchone()
                     old_status = current['current_status'] if current else None
                     
-                    if old_status != new_status:
-                        cursor.execute("""
-                            UPDATE properties SET 
-                                current_status = %s, 
-                                updated_at = NOW(),
-                                last_email_id = %s
-                            WHERE id = %s
-                        """, (new_status, email_data['id'], property_id))
+                    if old_status != normalized_new_status:
+                        # TOTM handling: record when property went TOTM
+                        if normalized_new_status == 'TOTM':
+                            cursor.execute("""
+                                UPDATE properties SET 
+                                    current_status = %s, 
+                                    totm_since = NOW(),
+                                    updated_at = NOW(),
+                                    last_email_id = %s
+                                WHERE id = %s
+                            """, (normalized_new_status, email_data['id'], property_id))
+                            logger.info(f"Property {property_id} set to TOTM - hidden from public view")
+                        
+                        # Back on Market from TOTM: restore to Active, clear TOTM date, keep last price
+                        elif normalized_new_status == 'Active' and old_status == 'TOTM':
+                            cursor.execute("""
+                                UPDATE properties SET 
+                                    current_status = %s, 
+                                    totm_since = NULL,
+                                    updated_at = NOW(),
+                                    last_email_id = %s
+                                WHERE id = %s
+                            """, (normalized_new_status, email_data['id'], property_id))
+                            logger.info(f"Property {property_id} back from TOTM -> Active (price preserved)")
+                        
+                        else:
+                            # Standard status update - clear TOTM date if set
+                            cursor.execute("""
+                                UPDATE properties SET 
+                                    current_status = %s,
+                                    totm_since = NULL,
+                                    updated_at = NOW(),
+                                    last_email_id = %s
+                                WHERE id = %s
+                            """, (normalized_new_status, email_data['id'], property_id))
                         
                         # Log status history
                         cursor.execute("""
                             INSERT INTO status_history 
                             (property_id, old_status, new_status, source_email_id, source_email_subject)
                             VALUES (%s, %s, %s, %s, %s)
-                        """, (property_id, old_status, new_status, email_data['id'], email_data['subject']))
+                        """, (property_id, old_status, normalized_new_status, email_data['id'], email_data['subject']))
                         
-                        actions.append(f'status:{old_status}->{new_status}')
+                        actions.append(f'status:{old_status}->{normalized_new_status}')
                 
                 # 6. Update price if changed
+                # RULE: Price must always remain populated for every property.
+                # When status changes to First Accepted (or any status-only email):
+                #   - If email has a price  → update price normally
+                #   - If email has NO price → do NOT touch price; keep the most recent known price
+                # This uses normalized_new_status (set in step 5) so variants like '1st Accept'
+                # are correctly handled — never raw/unnormalized status from AI output.
                 new_price = property_data.get('current_list_price')
-                if new_price:
+                
+                if new_price and new_price > 0:
+                    # Email contains a valid price — update it
                     cursor.execute("""
                         UPDATE properties SET 
                             current_list_price = %s,
@@ -469,6 +538,51 @@ class EmailMonitorV4:
                     """, (new_price, property_id, new_price))
                     if cursor.rowcount > 0:
                         actions.append(f'price_updated:{new_price}')
+                else:
+                    # No price in this email — explicitly preserve the existing price.
+                    # Do NOT set price to null/0. The existing DB value stays as-is.
+                    # This is the correct behavior for First Accepted, TOTM, H&B, and all
+                    # status-only notification emails that don't carry a price.
+                    if normalized_new_status:
+                        actions.append(f'price_preserved_on_{normalized_new_status}')
+                        logger.info(
+                            f"Property {property_id}: price preserved (no price in email, "
+                            f"status={normalized_new_status})"
+                        )
+                
+                # 7. Handle Highest & Best deadline
+                highest_best = extracted_data.get('highest_best', {})
+                hb_due_date = highest_best.get('due_date') if highest_best else None
+                hb_due_time = highest_best.get('due_time') if highest_best else None
+                if hb_due_date:
+                    try:
+                        from datetime import datetime as dt_class
+                        if hb_due_time:
+                            due_at = dt_class.strptime(f"{hb_due_date} {hb_due_time}", "%Y-%m-%d %H:%M")
+                        else:
+                            due_at = dt_class.strptime(hb_due_date, "%Y-%m-%d").replace(hour=23, minute=59)
+                        
+                        cursor.execute("""
+                            UPDATE properties SET highest_best_due_at = %s, updated_at = NOW()
+                            WHERE id = %s
+                        """, (due_at, property_id))
+                        
+                        # Also save to deadlines table
+                        cursor.execute("""
+                            UPDATE highest_best_deadlines SET is_active = FALSE, expired_at = NOW()
+                            WHERE property_id = %s AND is_active = TRUE
+                        """, (property_id,))
+                        cursor.execute("""
+                            INSERT INTO highest_best_deadlines 
+                            (property_id, due_date, due_time, due_at, offer_rules, submission_instructions, source_email_id)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        """, (property_id, hb_due_date, hb_due_time, due_at,
+                                highest_best.get('offer_rules'), highest_best.get('submission_instructions'),
+                                email_data['id']))
+                        
+                        actions.append(f'highest_best_due:{due_at}')
+                    except Exception as hb_err:
+                        logger.warning(f"Failed to parse H&B date: {hb_err}")
                 
                 conn.commit()
                 

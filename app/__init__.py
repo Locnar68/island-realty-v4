@@ -67,20 +67,44 @@ def properties():
         conn = get_db()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         
-        cur.execute("""
-            SELECT p.id, p.mls_number, p.address, p.current_list_price, 
-                   p.status, p.current_status, p.created_at, p.updated_at, 
-                   p.has_attachments, p.attachment_count, p.gmail_message_id,
-                   p.financing_type, p.agent_access, p.seller_agent_compensation,
-                   p.occupancy_status, p.hold_harmless_required,
-                   p.property_type, p.reo_status,
-                   (SELECT COUNT(*) FROM attachments a WHERE a.property_id = p.id) as total_attachments,
-                   (SELECT COUNT(*) FROM attachments a WHERE a.property_id = p.id AND a.is_foil = TRUE) as foil_count,
-                   (SELECT a.id FROM attachments a WHERE a.property_id = p.id AND a.category = 'Hold Harmless' AND a.gmail_attachment_id IS NOT NULL ORDER BY a.uploaded_at DESC LIMIT 1) as hh_attachment_id,
-                   (SELECT a.id FROM attachments a WHERE a.property_id = p.id AND a.is_foil = TRUE AND a.gmail_attachment_id IS NOT NULL ORDER BY a.uploaded_at DESC LIMIT 1) as foil_attachment_id
-            FROM properties p
-            ORDER BY p.updated_at DESC
-        """)
+        # Check if admin view requested (shows TOTM properties too)
+        show_totm = request.args.get('show_totm', 'false').lower() == 'true'
+        
+        if show_totm:
+            # Admin view: show all properties including TOTM
+            cur.execute("""
+                SELECT p.id, p.mls_number, p.address, p.current_list_price, 
+                       p.status, p.current_status, p.created_at, p.updated_at, 
+                       p.has_attachments, p.attachment_count, p.gmail_message_id,
+                       p.financing_type, p.agent_access, p.seller_agent_compensation,
+                       p.occupancy_status, p.hold_harmless_required,
+                       p.property_type, p.reo_status, p.highest_best_due_at, p.totm_since,
+                       (SELECT COUNT(*) FROM attachments a WHERE a.property_id = p.id AND (a.mime_type = 'application/pdf' OR a.filename ILIKE '%%.pdf')) as total_attachments,
+                       (SELECT COUNT(*) FROM attachments a WHERE a.property_id = p.id AND a.is_foil = TRUE AND (a.mime_type = 'application/pdf' OR a.filename ILIKE '%%.pdf')) as foil_count,
+                       (SELECT a.id FROM attachments a WHERE a.property_id = p.id AND a.category = 'Hold Harmless' AND a.gmail_attachment_id IS NOT NULL AND (a.mime_type = 'application/pdf' OR a.filename ILIKE '%%.pdf') ORDER BY a.uploaded_at DESC LIMIT 1) as hh_attachment_id,
+                       (SELECT a.id FROM attachments a WHERE a.property_id = p.id AND a.is_foil = TRUE AND a.gmail_attachment_id IS NOT NULL AND (a.mime_type = 'application/pdf' OR a.filename ILIKE '%%.pdf') ORDER BY a.uploaded_at DESC LIMIT 1) as foil_attachment_id
+                FROM properties p
+                WHERE (p.is_active IS NULL OR p.is_active = TRUE)
+                ORDER BY p.updated_at DESC
+            """)
+        else:
+            # Public view: hide TOTM properties, and hide properties TOTM > 2 weeks
+            cur.execute("""
+                SELECT p.id, p.mls_number, p.address, p.current_list_price, 
+                       p.status, p.current_status, p.created_at, p.updated_at, 
+                       p.has_attachments, p.attachment_count, p.gmail_message_id,
+                       p.financing_type, p.agent_access, p.seller_agent_compensation,
+                       p.occupancy_status, p.hold_harmless_required,
+                       p.property_type, p.reo_status, p.highest_best_due_at, p.totm_since,
+                       (SELECT COUNT(*) FROM attachments a WHERE a.property_id = p.id AND (a.mime_type = 'application/pdf' OR a.filename ILIKE '%%.pdf')) as total_attachments,
+                       (SELECT COUNT(*) FROM attachments a WHERE a.property_id = p.id AND a.is_foil = TRUE AND (a.mime_type = 'application/pdf' OR a.filename ILIKE '%%.pdf')) as foil_count,
+                       (SELECT a.id FROM attachments a WHERE a.property_id = p.id AND a.category = 'Hold Harmless' AND a.gmail_attachment_id IS NOT NULL AND (a.mime_type = 'application/pdf' OR a.filename ILIKE '%%.pdf') ORDER BY a.uploaded_at DESC LIMIT 1) as hh_attachment_id,
+                       (SELECT a.id FROM attachments a WHERE a.property_id = p.id AND a.is_foil = TRUE AND a.gmail_attachment_id IS NOT NULL AND (a.mime_type = 'application/pdf' OR a.filename ILIKE '%%.pdf') ORDER BY a.uploaded_at DESC LIMIT 1) as foil_attachment_id
+                FROM properties p
+                WHERE p.current_status != 'TOTM'
+                  AND (p.is_active IS NULL OR p.is_active = TRUE)
+                ORDER BY p.updated_at DESC
+            """)
         
         rows = cur.fetchall()
         
@@ -109,7 +133,9 @@ def properties():
                 "foil_count": row['foil_count'] or 0,
                 "total_attachments": row['total_attachments'] or 0,
                 "hh_attachment_id": row['hh_attachment_id'],
-                "foil_attachment_id": row['foil_attachment_id']
+                "foil_attachment_id": row['foil_attachment_id'],
+                "highest_best_due_at": row['highest_best_due_at'].isoformat() if row.get('highest_best_due_at') else None,
+                "totm_since": row['totm_since'].isoformat() if row.get('totm_since') else None
             })
         
         cur.close()
@@ -180,6 +206,7 @@ def property_attachments(property_id):
             FROM attachments a
             LEFT JOIN property_emails pe ON pe.gmail_message_id = a.gmail_message_id
             WHERE a.property_id = %s
+              AND (a.mime_type = 'application/pdf' OR a.filename ILIKE '%%.pdf')
             ORDER BY a.is_foil DESC, a.uploaded_at DESC
         """, (property_id,))
         
@@ -844,10 +871,15 @@ def admin_dashboard():
 
 @app.route('/api/admin/upload-act-spreadsheet', methods=['POST'])
 def upload_act_spreadsheet():
-    """Upload and process ACT spreadsheet PDF"""
+    """Upload and process ACT spreadsheet PDF.
+    
+    This is the SINGLE SOURCE OF TRUTH upload. Any property not on the
+    spreadsheet will be automatically deactivated (hidden from the site).
+    """
     try:
         import tempfile
         import sys
+        import os
         sys.path.insert(0, '/opt/island-realty/scripts')
         from act_reconciliation import reconcile_act_vs_database
         
@@ -872,13 +904,54 @@ def upload_act_spreadsheet():
             # Run reconciliation
             results = reconcile_act_vs_database(tmp_path)
             
+            # --- APPLY CHANGES: Spreadsheet is single source of truth ---
+            conn = get_db()
+            cur = conn.cursor()
+            
+            # Step 1: Mark ALL properties as inactive to start fresh
+            cur.execute("UPDATE properties SET is_active = FALSE")
+            
+            # Step 2: Reactivate properties that ARE in the spreadsheet
+            matched_db_ids = [m['db_id'] for m in results.get('matched', []) if m.get('db_id')]
+            reactivated = 0
+            if matched_db_ids:
+                cur.execute(
+                    "UPDATE properties SET is_active = TRUE WHERE id = ANY(%s)",
+                    (matched_db_ids,)
+                )
+                reactivated = len(matched_db_ids)
+            
+            # Step 3: Count how many were deactivated
+            cur.execute("SELECT COUNT(*) FROM properties WHERE is_active = FALSE")
+            deactivated_count = cur.fetchone()[0]
+            
+            # Step 4: Also update status/price for matched properties from spreadsheet
+            for match in results.get('matched', []):
+                if match.get('db_id') and match.get('reo_status'):
+                    cur.execute(
+                        """UPDATE properties 
+                           SET reo_status = %s,
+                               current_status = COALESCE(
+                                   CASE WHEN email_date > '2026-01-27' THEN current_status ELSE %s END,
+                                   %s
+                               )
+                           WHERE id = %s""",
+                        (match['reo_status'], match['reo_status'], match['reo_status'], match['db_id'])
+                    )
+            
+            conn.commit()
+            cur.close()
+            conn.close()
+            
             # Store results in Redis for later retrieval
             import json
+            results['applied'] = True
+            results['reactivated'] = reactivated
+            results['deactivated'] = deactivated_count
             redis_key = f'act_reconciliation:{datetime.now().strftime("%Y%m%d_%H%M%S")}'
-            r.setex(redis_key, 3600, json.dumps(results, default=str))
+            r.setex(redis_key, 86400, json.dumps(results, default=str))
             
             # Clean up temp file
-            import os
             os.unlink(tmp_path)
             
             return jsonify({
@@ -886,9 +959,12 @@ def upload_act_spreadsheet():
                 "filename": file.filename,
                 "results": {
                     "matched": len(results['matched']),
+                    "reactivated": reactivated,
+                    "deactivated": deactivated_count,
                     "in_act_not_db": len(results['in_act_not_db']),
                     "in_db_not_act": len(results['in_db_not_act']),
-                    "timestamp": results['timestamp']
+                    "timestamp": results['timestamp'],
+                    "applied": True
                 },
                 "details": results,
                 "redis_key": redis_key
@@ -896,7 +972,6 @@ def upload_act_spreadsheet():
             
         except Exception as e:
             # Clean up temp file on error
-            import os
             if os.path.exists(tmp_path):
                 os.unlink(tmp_path)
             raise e
@@ -980,8 +1055,8 @@ def view_attachment(attachment_id):
         
         mime_type = att['mime_type'] or 'application/octet-stream'
         
-        # Serve inline for PDFs and images, attachment for others
-        if mime_type in ('application/pdf', 'image/png', 'image/jpeg', 'image/gif'):
+        # Serve inline for PDFs only (PDF-only attachment policy)
+        if mime_type == 'application/pdf':
             disposition = f'inline; filename="{att["filename"]}"'
         else:
             disposition = f'attachment; filename="{att["filename"]}"'
@@ -996,5 +1071,254 @@ def view_attachment(attachment_id):
             }
         )
         
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+
+@app.route('/api/attachments/<int:attachment_id>/download')
+def download_attachment(attachment_id):
+    """Fetch an attachment from Gmail and force-download it as a PDF"""
+    from flask import Response
+    try:
+        conn = get_db()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT a.id, a.filename, a.mime_type, a.gmail_attachment_id, a.gmail_message_id,
+                   a.category, a.is_foil
+            FROM attachments a
+            WHERE a.id = %s
+              AND (a.mime_type = 'application/pdf' OR a.filename ILIKE '%%.pdf')
+        """, (attachment_id,))
+        att = cur.fetchone()
+        cur.close()
+        conn.close()
+
+        if not att:
+            return jsonify({"error": "Attachment not found or not a PDF"}), 404
+        if not att['gmail_attachment_id'] or not att['gmail_message_id']:
+            return jsonify({"error": "Attachment not available in Gmail"}), 404
+
+        service = get_gmail_service()
+        gmail_att = service.users().messages().attachments().get(
+            userId='me',
+            messageId=att['gmail_message_id'],
+            id=att['gmail_attachment_id']
+        ).execute()
+
+        file_data = base64.urlsafe_b64decode(gmail_att['data'])
+
+        return Response(
+            file_data,
+            mimetype='application/pdf',
+            headers={
+                'Content-Disposition': f'attachment; filename="{att["filename"]}"',
+                'Content-Length': str(len(file_data)),
+                'Cache-Control': 'private, max-age=300'
+            }
+        )
+
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        return jsonify({"error": str(e), "traceback": tb}), 500
+
+
+@app.route('/api/admin/upload-spreadsheet', methods=['POST'])
+def upload_spreadsheet():
+    """Upload weekly Excel/CSV inventory spreadsheet.
+    
+    This is the SINGLE SOURCE OF TRUTH. Properties NOT on the spreadsheet
+    are automatically deactivated (hidden from the site).
+    
+    Expected columns (flexible matching):
+    - Address / Street / Property (required)
+    - City (optional, used for disambiguation)
+    - Status / REO Status / Current Status (optional)
+    - Price / List Price (optional)
+    """
+    try:
+        import tempfile, os, re, io
+        import pandas as pd
+
+        if 'file' not in request.files:
+            return jsonify({"error": "No file uploaded"}), 400
+
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"error": "No file selected"}), 400
+
+        fname = file.filename.lower()
+        if not (fname.endswith('.xlsx') or fname.endswith('.xls') or fname.endswith('.csv')):
+            return jsonify({"error": "File must be Excel (.xlsx/.xls) or CSV"}), 400
+
+        # Read into DataFrame
+        file_bytes = file.read()
+        if fname.endswith('.csv'):
+            df = pd.read_csv(io.BytesIO(file_bytes))
+        else:
+            df = pd.read_excel(io.BytesIO(file_bytes))
+
+        df.columns = [str(c).strip() for c in df.columns]
+
+        # --- Flexible column detection ---
+        def find_col(df, candidates):
+            for c in df.columns:
+                if any(cand.lower() in c.lower() for cand in candidates):
+                    return c
+            return None
+
+        addr_col   = find_col(df, ['address', 'street', 'property', 'addr'])
+        city_col   = find_col(df, ['city', 'town', 'municipality'])
+        status_col = find_col(df, ['status', 'reo status', 'current status', 'listing status'])
+        price_col  = find_col(df, ['price', 'list price', 'listing price', 'asking'])
+
+        if not addr_col:
+            return jsonify({"error": f"Could not find address column. Columns found: {list(df.columns)}"}), 400
+
+        # Build list of spreadsheet addresses
+        def normalize_addr(a):
+            if not a:
+                return ''
+            a = str(a).lower().strip()
+            a = re.sub(r'\s+', ' ', a)
+            for old, new in [(' street',' st'),(' road',' rd'),(' avenue',' ave'),
+                             (' boulevard',' blvd'),(' drive',' dr'),(' lane',' ln'),
+                             (' court',' ct'),(' place',' pl')]:
+                a = a.replace(old, new)
+            a = a.replace('.', '')
+            return a
+
+        sheet_properties = []
+        for _, row in df.iterrows():
+            addr = str(row[addr_col]).strip() if pd.notna(row[addr_col]) else ''
+            if not addr or addr.lower() in ('nan', 'none', ''):
+                continue
+            city = str(row[city_col]).strip() if city_col and pd.notna(row[city_col]) else ''
+            full_addr = f"{addr}, {city}" if city else addr
+            raw_status = str(row[status_col]).strip() if status_col and pd.notna(row[status_col]) else None
+            # Normalize status variants to canonical form
+            def normalize_status_val(s):
+                if not s or s.lower() in ('nan', 'none', ''):
+                    return None
+                sl = s.lower().strip()
+                if sl in ('pending', 'under contract', 'pended', 'in contract'):
+                    return 'In Contract'
+                if sl in ('available', 'lpp', 'auction/available', 'auction available'):
+                    return 'Auction Available'
+                if sl in ('1st accept', '1st accepted', 'first accepted'):
+                    return 'First Accepted'
+                if sl in ('t-o-t-m', 'totm', 'temporarily off the market'):
+                    return 'TOTM'
+                if sl in ('highest and best', 'highest & best'):
+                    return 'Highest & Best'
+                return s
+            status = normalize_status_val(raw_status)
+            price = None
+            if price_col and pd.notna(row[price_col]):
+                try:
+                    price_str = str(row[price_col]).replace('$','').replace(',','').strip()
+                    price = float(price_str)
+                except:
+                    pass
+            sheet_properties.append({
+                'address': addr,
+                'city': city,
+                'full_address': full_addr,
+                'normalized': normalize_addr(full_addr),
+                'street_number': re.match(r'^(\d+)', addr.strip()).group(1) if re.match(r'^(\d+)', addr.strip()) else None,
+                'status': status,
+                'price': price
+            })
+
+        if not sheet_properties:
+            return jsonify({"error": "No valid property rows found in spreadsheet"}), 400
+
+        conn = get_db()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # Get all DB properties
+        cur.execute("SELECT id, address FROM properties")
+        db_props = cur.fetchall()
+
+        def normalize_addr_db(a):
+            return normalize_addr(a or '')
+
+        matched_ids = set()
+        matched_count = 0
+        updated_count = 0
+
+        for sp in sheet_properties:
+            sp_norm = sp['normalized']
+            sp_num = sp['street_number']
+            best_id = None
+            best_score = 0
+
+            for dbp in db_props:
+                db_norm = normalize_addr_db(dbp['address'])
+                db_num = re.match(r'^(\d+)', dbp['address'].strip()).group(1) if re.match(r'^(\d+)', dbp['address'].strip()) else None
+
+                score = 0
+                # Street number match is strongest signal
+                if sp_num and db_num and sp_num == db_num:
+                    score += 50
+                # Partial address match
+                if sp_norm and db_norm:
+                    sp_words = set(sp_norm.split())
+                    db_words = set(db_norm.split())
+                    overlap = len(sp_words & db_words)
+                    if overlap > 0:
+                        score += overlap * 10
+
+                if score > best_score and score >= 30:
+                    best_score = score
+                    best_id = dbp['id']
+
+            if best_id:
+                matched_ids.add(best_id)
+                matched_count += 1
+                # Spreadsheet is SINGLE SOURCE OF TRUTH: always overwrite status/price
+                update_parts = ["is_active = TRUE"]
+                update_vals = []
+                if sp['status']:
+                    update_parts.append("current_status = %s")
+                    update_vals.append(sp['status'])
+                if sp['price']:
+                    update_parts.append("current_list_price = %s")
+                    update_vals.append(sp['price'])
+                update_vals.append(best_id)
+                cur.execute(f"UPDATE properties SET {', '.join(update_parts)} WHERE id = %s", update_vals)
+                updated_count += 1
+
+        # Step 2: Deactivate all properties NOT matched on the spreadsheet
+        all_db_ids = {dbp['id'] for dbp in db_props}
+        unmatched_ids = list(all_db_ids - matched_ids)
+        deactivated_count = 0
+        if unmatched_ids:
+            cur.execute("UPDATE properties SET is_active = FALSE WHERE id = ANY(%s)", (unmatched_ids,))
+            deactivated_count = len(unmatched_ids)
+
+        # Also ensure matched ones are active
+        if matched_ids:
+            cur.execute("UPDATE properties SET is_active = TRUE WHERE id = ANY(%s)", (list(matched_ids),))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({
+            "success": True,
+            "filename": file.filename,
+            "results": {
+                "spreadsheet_rows": len(sheet_properties),
+                "matched_in_db": matched_count,
+                "updated": updated_count,
+                "deactivated": deactivated_count,
+                "message": f"✅ {matched_count} properties activated, {deactivated_count} deactivated (not on spreadsheet)"
+            }
+        })
+
+    except ImportError:
+        return jsonify({"error": "pandas/openpyxl not installed. Run: pip install pandas openpyxl --break-system-packages"}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
