@@ -143,6 +143,13 @@
             color: #1a3a52;
             flex: 1;
         }
+        .property-address2 {
+            font-size: 0.9em;
+            color: #5a7a8a;
+            font-weight: 500;
+            margin-top: 2px;
+            flex-basis: 100%;
+        }
         .status-badge {
             padding: 6px 12px;
             border-radius: 5px;
@@ -218,6 +225,13 @@
         .btn-hold-harmless:hover {
             background: #ff6b6b;
             color: white;
+        }
+        .btn-photos {
+            background: linear-gradient(135deg, #28a745, #20883a);
+            color: white;
+        }
+        .btn-photos:hover {
+            background: linear-gradient(135deg, #20883a, #186d2e);
         }
         .btn-foil {
             border-color: #c8102e;
@@ -841,7 +855,7 @@
 
             if (currentSearch) {
                 filtered = filtered.filter(property => {
-                    const searchStr = `${property.address} ${property.current_status} ${displayStatus(property.current_status)} ${property.financing_type || ''} ${property.agent_access || ''} ${property.occupancy_status || ''}`.toLowerCase();
+                    const searchStr = `${property.address} ${property.address_2 || ''} ${property.current_status} ${displayStatus(property.current_status)} ${property.financing_type || ''} ${property.agent_access || ''} ${property.occupancy_status || ''}`.toLowerCase();
                     return searchStr.includes(currentSearch);
                 });
             }
@@ -933,6 +947,7 @@
                     ${holdHarmlessWarning}
                     <div class="property-header">
                         <div class="property-title">${property.address || 'Address not available'}</div>
+                        ${property.address_2 ? `<div class="property-address2">${property.address_2}</div>` : ''}
                         <div class="status-badge ${statusClass}">${displayStatus(property.current_status || property.status)}</div>
                     </div>
                     
@@ -945,6 +960,7 @@
                             '<a class="btn-doc-link btn-foil" href="/api/attachments/' + property.foil_attachment_id + '/view" target="_blank" title="View FOIL Document">📄 FOIL</a>' : 
                             ''
                         }
+                        ${property.primary_photo_url ? '<a class="btn-doc-link btn-photos" href="' + property.primary_photo_url + '" target="_blank" title="View Photos">📷 Photos</a>' : ''}
                     </div>
                     <div class="card-action-row">
                         <button class="${attBtnClass}" 

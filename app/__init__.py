@@ -73,12 +73,12 @@ def properties():
         if show_totm:
             # Admin view: show all properties including TOTM
             cur.execute("""
-                SELECT p.id, p.mls_number, p.address, p.current_list_price, 
+                SELECT p.id, p.mls_number, p.address, p.address_2, p.current_list_price, 
                        p.status, p.current_status, p.created_at, p.updated_at, 
                        p.has_attachments, p.attachment_count, p.gmail_message_id,
                        p.financing_type, p.agent_access, p.seller_agent_compensation,
                        p.occupancy_status, p.hold_harmless_required,
-                       p.property_type, p.reo_status, p.highest_best_due_at, p.totm_since,
+                       p.property_type, p.reo_status, p.highest_best_due_at, p.totm_since, p.primary_photo_url,
                        (SELECT COUNT(*) FROM attachments a WHERE a.property_id = p.id AND (a.mime_type = 'application/pdf' OR a.filename ILIKE '%%.pdf')) as total_attachments,
                        (SELECT COUNT(*) FROM attachments a WHERE a.property_id = p.id AND a.is_foil = TRUE AND (a.mime_type = 'application/pdf' OR a.filename ILIKE '%%.pdf')) as foil_count,
                        (SELECT a.id FROM attachments a WHERE a.property_id = p.id AND a.category = 'Hold Harmless' AND a.gmail_attachment_id IS NOT NULL AND (a.mime_type = 'application/pdf' OR a.filename ILIKE '%%.pdf') ORDER BY a.uploaded_at DESC LIMIT 1) as hh_attachment_id,
@@ -90,12 +90,12 @@ def properties():
         else:
             # Public view: hide TOTM properties, and hide properties TOTM > 2 weeks
             cur.execute("""
-                SELECT p.id, p.mls_number, p.address, p.current_list_price, 
+                SELECT p.id, p.mls_number, p.address, p.address_2, p.current_list_price, 
                        p.status, p.current_status, p.created_at, p.updated_at, 
                        p.has_attachments, p.attachment_count, p.gmail_message_id,
                        p.financing_type, p.agent_access, p.seller_agent_compensation,
                        p.occupancy_status, p.hold_harmless_required,
-                       p.property_type, p.reo_status, p.highest_best_due_at, p.totm_since,
+                       p.property_type, p.reo_status, p.highest_best_due_at, p.totm_since, p.primary_photo_url,
                        (SELECT COUNT(*) FROM attachments a WHERE a.property_id = p.id AND (a.mime_type = 'application/pdf' OR a.filename ILIKE '%%.pdf')) as total_attachments,
                        (SELECT COUNT(*) FROM attachments a WHERE a.property_id = p.id AND a.is_foil = TRUE AND (a.mime_type = 'application/pdf' OR a.filename ILIKE '%%.pdf')) as foil_count,
                        (SELECT a.id FROM attachments a WHERE a.property_id = p.id AND a.category = 'Hold Harmless' AND a.gmail_attachment_id IS NOT NULL AND (a.mime_type = 'application/pdf' OR a.filename ILIKE '%%.pdf') ORDER BY a.uploaded_at DESC LIMIT 1) as hh_attachment_id,
@@ -114,6 +114,7 @@ def properties():
                 "id": row['id'],
                 "mls_number": row['mls_number'],
                 "address": row['address'],
+                "address_2": row.get('address_2') or '',
                 "current_list_price": float(row['current_list_price']) if row['current_list_price'] else 0,
                 "price": float(row['current_list_price']) if row['current_list_price'] else 0,
                 "status": row['status'],
@@ -135,7 +136,8 @@ def properties():
                 "hh_attachment_id": row['hh_attachment_id'],
                 "foil_attachment_id": row['foil_attachment_id'],
                 "highest_best_due_at": row['highest_best_due_at'].isoformat() if row.get('highest_best_due_at') else None,
-                "totm_since": row['totm_since'].isoformat() if row.get('totm_since') else None
+                "totm_since": row['totm_since'].isoformat() if row.get('totm_since') else None,
+                "primary_photo_url": row.get('primary_photo_url') or None
             })
         
         cur.close()
@@ -595,6 +597,29 @@ def stats():
             "last_sync": None
         })
 
+@app.route('/api/admin/set-photo-url', methods=['POST'])
+def set_photo_url():
+    try:
+        data = request.get_json()
+        property_id = data.get('property_id')
+        photo_url = data.get('photo_url', '').strip()
+        if not property_id:
+            return jsonify({'error': 'property_id required'}), 400
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute('UPDATE properties SET primary_photo_url = %s WHERE id = %s RETURNING address',
+                    (photo_url if photo_url else None, property_id))
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return jsonify({'error': 'Property not found'}), 404
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'address': row[0], 'photo_url': photo_url})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
 
@@ -908,22 +933,11 @@ def upload_act_spreadsheet():
             conn = get_db()
             cur = conn.cursor()
             
-            # Step 1: Mark ALL properties as inactive to start fresh
-            cur.execute("UPDATE properties SET is_active = FALSE")
+            # Spreadsheet NEVER deactivates properties - emails/manual actions control is_active
+            matched_db_ids = [m["db_id"] for m in results.get("matched", []) if m.get("db_id")]
+            reactivated = len(matched_db_ids)
+            deactivated_count = 0
             
-            # Step 2: Reactivate properties that ARE in the spreadsheet
-            matched_db_ids = [m['db_id'] for m in results.get('matched', []) if m.get('db_id')]
-            reactivated = 0
-            if matched_db_ids:
-                cur.execute(
-                    "UPDATE properties SET is_active = TRUE WHERE id = ANY(%s)",
-                    (matched_db_ids,)
-                )
-                reactivated = len(matched_db_ids)
-            
-            # Step 3: Count how many were deactivated
-            cur.execute("SELECT COUNT(*) FROM properties WHERE is_active = FALSE")
-            deactivated_count = cur.fetchone()[0]
             
             # Step 4: Also update status/price for matched properties from spreadsheet
             for match in results.get('matched', []):
@@ -1168,7 +1182,8 @@ def upload_spreadsheet():
                     return c
             return None
 
-        addr_col   = find_col(df, ['address', 'street', 'property', 'addr'])
+        addr_col   = find_col(df, ['address 1', 'address1', 'address', 'street', 'property', 'addr'])
+        addr2_col  = find_col(df, ['address 2', 'address2', 'unit', 'suite', 'apt', 'apt #', 'unit #'])
         city_col   = find_col(df, ['city', 'town', 'municipality'])
         status_col = find_col(df, ['status', 'reo status', 'current status', 'listing status'])
         price_col  = find_col(df, ['price', 'list price', 'listing price', 'asking'])
@@ -1194,6 +1209,8 @@ def upload_spreadsheet():
             addr = str(row[addr_col]).strip() if pd.notna(row[addr_col]) else ''
             if not addr or addr.lower() in ('nan', 'none', ''):
                 continue
+            addr2 = str(row[addr2_col]).strip() if addr2_col and pd.notna(row[addr2_col]) else ''
+            if addr2.lower() in ('nan', 'none', ''): addr2 = ''
             city = str(row[city_col]).strip() if city_col and pd.notna(row[city_col]) else ''
             full_addr = f"{addr}, {city}" if city else addr
             raw_status = str(row[status_col]).strip() if status_col and pd.notna(row[status_col]) else None
@@ -1223,6 +1240,7 @@ def upload_spreadsheet():
                     pass
             sheet_properties.append({
                 'address': addr,
+                'address_2': addr2,
                 'city': city,
                 'full_address': full_addr,
                 'normalized': normalize_addr(full_addr),
@@ -1278,8 +1296,11 @@ def upload_spreadsheet():
                 matched_ids.add(best_id)
                 matched_count += 1
                 # Spreadsheet is SINGLE SOURCE OF TRUTH: always overwrite status/price
-                update_parts = ["is_active = TRUE"]
+                update_parts = []  # Never touch is_active - emails/manual actions control it
                 update_vals = []
+                if sp.get('address_2'):
+                    update_parts.append("address_2 = %s")
+                    update_vals.append(sp['address_2'])
                 if sp['status']:
                     update_parts.append("current_status = %s")
                     update_vals.append(sp['status'])
@@ -1287,20 +1308,20 @@ def upload_spreadsheet():
                     update_parts.append("current_list_price = %s")
                     update_vals.append(sp['price'])
                 update_vals.append(best_id)
-                cur.execute(f"UPDATE properties SET {', '.join(update_parts)} WHERE id = %s", update_vals)
-                updated_count += 1
+                if update_parts:  # Only execute if there's something to update
+                    cur.execute(f"UPDATE properties SET {', '.join(update_parts)} WHERE id = %s", update_vals)
+                    updated_count += 1
 
-        # Step 2: Deactivate all properties NOT matched on the spreadsheet
-        all_db_ids = {dbp['id'] for dbp in db_props}
-        unmatched_ids = list(all_db_ids - matched_ids)
-        deactivated_count = 0
-        if unmatched_ids:
-            cur.execute("UPDATE properties SET is_active = FALSE WHERE id = ANY(%s)", (unmatched_ids,))
-            deactivated_count = len(unmatched_ids)
-
-        # Also ensure matched ones are active
+        # Deactivate properties NOT on spreadsheet (safe - address matching now works)
         if matched_ids:
-            cur.execute("UPDATE properties SET is_active = TRUE WHERE id = ANY(%s)", (list(matched_ids),))
+            matched_list = list(matched_ids)
+            cur.execute(
+                "UPDATE properties SET is_active = FALSE WHERE id != ALL(%s) AND is_active = TRUE",
+                (matched_list,)
+            )
+            deactivated_count = cur.rowcount
+        else:
+            deactivated_count = 0
 
         conn.commit()
         cur.close()

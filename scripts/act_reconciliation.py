@@ -82,7 +82,7 @@ def parse_act_pdf(pdf_path):
             for table in tables:
                 # Skip header row
                 for row in table[1:]:
-                    if not row or len(row) < 8:
+                    if not row or len(row) < 7:
                         continue
                     
                     try:
@@ -96,14 +96,14 @@ def parse_act_pdf(pdf_path):
                         # Col 7: List Date
                         # Col 8: List Price
                         
+                        # PDF columns: REO Status | Prop Style | Address 1 | Address 2 | City | List Date | List Price
                         reo_status = row[0] if row[0] else ""
-                        financing = row[1] if row[1] else ""
-                        prop_style = row[2] if row[2] else ""
-                        address1 = row[3] if row[3] else ""
-                        address2 = row[4] if row[4] else ""
-                        city = row[5] if row[5] else ""
-                        list_date = row[6] if row[6] else ""
-                        list_price = row[7] if row[7] else ""
+                        prop_style = row[1] if row[1] else ""
+                        address1  = row[2] if row[2] else ""
+                        address2  = row[3] if row[3] else ""
+                        city      = row[4] if row[4] else ""
+                        list_date = row[5] if row[5] else ""
+                        list_price = row[6] if row[6] else ""
                         
                         # Skip empty rows
                         if not address1 or not city:

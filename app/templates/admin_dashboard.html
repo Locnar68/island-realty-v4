@@ -534,6 +534,32 @@
         </div>
 
         <!-- Processing Errors -->
+
+        <div class="section">
+            <h2>&#x1F4F7; Property Photo Links</h2>
+            <p style="color: #6b7280; margin-bottom: 1.5rem;">Add or update a photo gallery link for any property. The link will appear as a Photos button on the property card.</p>
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                <div style="flex: 2; min-width: 250px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Search Property</label>
+                    <input type="text" id="photo-prop-search" placeholder="Type address to search..."
+                        oninput="searchPhotoProperties()"
+                        style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.95rem;">
+                    <div id="photo-prop-results" style="border: 1px solid #d1d5db; border-radius: 6px; max-height: 200px; overflow-y: auto; display: none; background: white; margin-top: 2px; position: relative; z-index: 100;"></div>
+                </div>
+                <div style="flex: 3; min-width: 250px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Photo Gallery URL</label>
+                    <input type="text" id="photo-url-input" placeholder="https://app.companycam.com/galleries/..."
+                        style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.95rem;">
+                </div>
+            </div>
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <input type="hidden" id="photo-prop-id" value="">
+                <div id="photo-selected-prop" style="flex: 1; color: #374151; font-style: italic;">No property selected</div>
+                <button onclick="savePhotoUrl()" class="scan-button" style="background: #28a745; min-width: 160px;">&#x1F4BE; Save Photo Link</button>
+            </div>
+            <div id="photo-save-status" style="margin-top: 1rem;"></div>
+        </div>
+
         <div class="section">
             <h2>❌ Processing Errors (Last 7 Days)</h2>
             <table>
@@ -926,6 +952,71 @@
             document.getElementById('act-results-section').scrollIntoView({ behavior: 'smooth' });
         }
         setInterval(loadLastScanTime, 60 * 1000);
-    </script>
+    
+        async function searchPhotoProperties() {
+            const q = document.getElementById('photo-prop-search').value.trim();
+            const results = document.getElementById('photo-prop-results');
+            if (q.length < 2) { results.style.display = 'none'; return; }
+            try {
+                const resp = await fetch('/api/properties');
+                const data = await resp.json();
+                const props = (data.properties || []).filter(p =>
+                    p.address && p.address.toLowerCase().includes(q.toLowerCase())
+                ).slice(0, 8);
+                if (props.length === 0) { results.style.display = 'none'; return; }
+                results.innerHTML = props.map(p =>
+                    '<div onclick="selectPhotoProperty(' + p.id + ', \'' + p.address.replace(/'/g, "&#39;") + '\')" ' +
+                    'style="padding: 0.6rem 1rem; cursor: pointer; border-bottom: 1px solid #f3f4f6;" ' +
+                    'onmouseover="this.style.background=\'#f3f4f6\'" onmouseout="this.style.background=\'white\'">' +
+                    p.address + (p.address_2 ? ' ' + p.address_2 : '') +
+                    '<span style="color:#6b7280; font-size:0.85rem;"> &middot; ' + (p.current_status || '') + '</span>' +
+                    (p.primary_photo_url ? '<span style="color:#28a745; font-size:0.8rem;"> &#10003; has photo</span>' : '') +
+                    '</div>'
+                ).join('');
+                results.style.display = 'block';
+            } catch(e) { console.error(e); }
+        }
+
+        function selectPhotoProperty(id, address) {
+            document.getElementById('photo-prop-id').value = id;
+            document.getElementById('photo-prop-search').value = address;
+            document.getElementById('photo-selected-prop').textContent = 'Selected: ' + address;
+            document.getElementById('photo-prop-results').style.display = 'none';
+        }
+
+        async function savePhotoUrl() {
+            const propId = document.getElementById('photo-prop-id').value;
+            const url = document.getElementById('photo-url-input').value.trim();
+            const status = document.getElementById('photo-save-status');
+            if (!propId) { status.innerHTML = '<span style="color:red;">Please select a property first.</span>'; return; }
+            if (!url) { status.innerHTML = '<span style="color:red;">Please enter a photo URL.</span>'; return; }
+            try {
+                const resp = await fetch('/api/admin/set-photo-url', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({property_id: parseInt(propId), photo_url: url})
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    status.innerHTML = '<span style="color:#28a745;">&#x2705; Photo link saved for ' + data.address + '</span>';
+                    document.getElementById('photo-prop-id').value = '';
+                    document.getElementById('photo-prop-search').value = '';
+                    document.getElementById('photo-url-input').value = '';
+                    document.getElementById('photo-selected-prop').textContent = 'No property selected';
+                } else {
+                    status.innerHTML = '<span style="color:red;">Error: ' + (data.error || 'Unknown error') + '</span>';
+                }
+            } catch(e) {
+                status.innerHTML = '<span style="color:red;">Request failed: ' + e.message + '</span>';
+            }
+        }
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('#photo-prop-search') && !e.target.closest('#photo-prop-results')) {
+                const r = document.getElementById('photo-prop-results');
+                if (r) r.style.display = 'none';
+            }
+        });
+</script>
 </body>
 </html>
