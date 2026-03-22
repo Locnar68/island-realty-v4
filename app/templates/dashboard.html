@@ -3,1252 +3,840 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Island Advantage Property Management</title>
+    <title>Island Advantage PMS</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1a3a52 0%, #2a5298 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        .header {
-            text-align: center;
-            color: white;
-            margin-bottom: 30px;
-        }
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-        .header p {
-            font-size: 1.1em;
-            opacity: 0.9;
+        :root {
+            --navy: #0f2d4a;
+            --navy-mid: #1a4a6e;
+            --navy-light: #2563a8;
+            --accent: #c8a84b;
+            --accent-light: #e8c96b;
+            --red: #dc2626;
+            --foil-red: #c8102e;
+            --green: #16a34a;
+            --orange: #ea580c;
+            --gray: #475569;
+            --gray-light: #94a3b8;
+            --bg: #f0f4f8;
+            --surface: #ffffff;
+            --border: #cbd5e1;
+            --text: #1e293b;
         }
 
-        .top-controls {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
         }
-        .control-row {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 15px;
+
+        /* ── Header ─────────────────────────────────────────── */
+        .header {
+            background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
+            border-bottom: 3px solid var(--accent);
         }
-        .control-group {
-            display: flex;
-            flex-direction: column;
-        }
-        .control-group label {
-            color: #333;
-            font-weight: 600;
-            margin-bottom: 5px;
-            font-size: 0.9em;
-        }
-        .search-input, .email-input {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 5px;
-            font-size: 1em;
-        }
-        .search-input:focus, .email-input:focus {
-            outline: none;
-            border-color: #1a3a52;
-        }
-        
-        .controls {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .filter-section { margin-bottom: 20px; }
-        .filter-section h3 {
-            color: #1a3a52;
-            margin-bottom: 10px;
-            font-size: 1.1em;
-        }
-        .filter-buttons, .sort-buttons {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        .filter-btn {
-            padding: 8px 16px;
-            border: 2px solid #1a3a52;
-            background: white;
-            color: #1a3a52;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 0.95em;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-        .filter-btn:hover { background: #f0f4ff; transform: translateY(-2px); }
-        .filter-btn.active { background: #1a3a52; color: white; }
-        
-        .sort-btn {
-            padding: 8px 16px;
-            border: 2px solid #c8102e;
-            background: white;
-            color: #c8102e;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 0.95em;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-        .sort-btn:hover { background: #fff0f0; transform: translateY(-2px); }
-        .sort-btn.active { background: #c8102e; color: white; }
-        
-        .properties-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-            gap: 25px;
+
+        .header-inner {
             max-width: 1400px;
             margin: 0 auto;
-        }
-        
-        .property-card {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            position: relative;
-        }
-        .property-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 12px rgba(0,0,0,0.2);
-        }
-        .property-card.hold-harmless { border: 3px solid #ff6b6b; }
-        
-        .property-header {
             display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 10px;
-        }
-        .property-title {
-            font-size: 1.15em;
-            font-weight: bold;
-            color: #1a3a52;
-            flex: 1;
-        }
-        .property-address2 {
-            font-size: 0.9em;
-            color: #5a7a8a;
-            font-weight: 500;
-            margin-top: 2px;
-            flex-basis: 100%;
-        }
-        .status-badge {
-            padding: 6px 12px;
-            border-radius: 5px;
-            font-size: 0.8em;
-            font-weight: 600;
-            text-transform: uppercase;
-            white-space: nowrap;
-            margin-left: 10px;
-        }
-        
-        .status-active { background: #28a745; color: white; }
-        .status-price-reduced, .status-price-reduction { background: #ffc107; color: #333; }
-        .status-highest-best, .status-highest-and-best { background: #17a2b8; color: white; }
-        .hb-due-date { 
-            background: #e8f4fd; 
-            border-left: 3px solid #17a2b8; 
-            padding: 6px 10px; 
-            margin: 6px 0; 
-            font-size: 0.85em; 
-            color: #1a3a52;
-            border-radius: 0 4px 4px 0;
-        }
-        .hb-due-date .hb-label { font-weight: 600; color: #17a2b8; }
-        .hb-due-date .hb-urgent { color: #dc3545; font-weight: 700; }
-        .status-first-accepted { background: #20c997; color: white; }
-        .status-auction-available { background: #007bff; color: white; }
-        .status-in-contract { background: #fd7e14; color: white; }
-        .status-pending { background: #fd7e14; color: white; }
-        .status-sold { background: #dc3545; color: white; }
-        .status-t-o-t-m, .status-totm { background: #ff8c00; color: white; }
-        .status-bom, .status-back-on-market { background: #fd7e14; color: white; }
-        
-        .hold-harmless-warning {
-            background: #ff6b6b;
-            color: white;
-            padding: 8px 12px;
-            border-radius: 5px;
-            font-weight: 600;
-            font-size: 0.9em;
-            margin-bottom: 12px;
-            text-align: center;
-        }
-
-
-        /* ====== DOCUMENT QUICK-ACCESS BUTTONS ====== */
-        .doc-links-row {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 12px;
-        }
-        .btn-doc-link {
-            display: inline-flex;
             align-items: center;
-            gap: 6px;
-            padding: 8px 14px;
-            border: 2px solid;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.85em;
-            font-weight: 600;
-            text-decoration: none;
-            transition: all 0.2s ease;
-        }
-        .btn-doc-link:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-        }
-        .btn-hold-harmless {
-            border-color: #ff6b6b;
-            background: #fff5f5;
-            color: #c0392b;
-        }
-        .btn-hold-harmless:hover {
-            background: #ff6b6b;
-            color: white;
-        }
-        .btn-photos {
-            background: linear-gradient(135deg, #28a745, #20883a);
-            color: white;
-        }
-        .btn-photos:hover {
-            background: linear-gradient(135deg, #20883a, #186d2e);
-        }
-        .btn-foil {
-            border-color: #c8102e;
-            background: #fff0f3;
-            color: #c8102e;
-        }
-        .btn-foil:hover {
-            background: #c8102e;
-            color: white;
-        }
-        .btn-doc-link.disabled {
-            border-color: #dee2e6;
-            background: #f8f9fa;
-            color: #adb5bd;
-            cursor: default;
-            pointer-events: none;
+            justify-content: space-between;
+            padding: 10px 24px;
+            gap: 16px;
         }
 
-        /* ====== ATTACHMENT BUTTON ROW - FRONT OF CARD ====== */
-        .card-action-row {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid #eee;
+        .logo-area img { height: 52px; width: auto; display: block; }
+
+        .logo-fallback {
+            display: none;
+            color: white;
+            font-size: 1.4rem;
+            font-weight: 700;
         }
-        
-        .btn-attachments {
+
+        .header-right { display: flex; align-items: center; gap: 10px; }
+
+        .agent-email-wrap {
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 10px 16px;
-            border: 2px solid #1a3a52;
-            background: #1a3a52;
-            color: white;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.2);
             border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.9em;
+            padding: 6px 12px;
+        }
+
+        .agent-email-wrap label {
+            color: var(--accent-light);
+            font-size: 0.78rem;
             font-weight: 600;
-            transition: all 0.2s ease;
-            flex: 1;
+            white-space: nowrap;
         }
-        .btn-attachments:hover {
-            background: #0d2133;
-            transform: translateY(-1px);
-            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-        }
-        .btn-attachments.has-foil {
-            border-color: #c8102e;
-            background: #c8102e;
-        }
-        .btn-attachments.has-foil:hover {
-            background: #a00d24;
-        }
-        .btn-attachments.no-attachments {
-            background: #e9ecef;
-            border-color: #dee2e6;
-            color: #999;
-            cursor: default;
-        }
-        .btn-attachments .att-icon { font-size: 1.2em; }
-        .btn-attachments .att-count {
-            background: rgba(255,255,255,0.25);
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.85em;
-        }
-        
-        .foil-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            background: #c8102e;
+
+        .agent-email-wrap input {
+            background: none;
+            border: none;
+            outline: none;
             color: white;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 0.78em;
-            font-weight: 700;
-            letter-spacing: 0.5px;
+            font-size: 0.9rem;
+            width: 220px;
         }
-        
-        .btn-email-fwd {
+
+        .btn-admin {
             display: flex;
             align-items: center;
             gap: 6px;
-            padding: 10px 14px;
-            border: 2px solid #6c757d;
-            background: white;
-            color: #6c757d;
+            background: var(--accent);
+            color: var(--navy);
+            border: none;
             border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 0.88rem;
+            font-weight: 700;
             cursor: pointer;
-            font-size: 0.9em;
-            font-weight: 500;
-            transition: all 0.2s ease;
+            text-decoration: none;
+            transition: background 0.2s;
+            white-space: nowrap;
         }
-        .btn-email-fwd:hover {
-            background: #6c757d;
+
+        .btn-admin:hover { background: var(--accent-light); }
+
+        /* ── Controls bar ────────────────────────────────────── */
+        .controls-bar {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .controls-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 12px 24px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-wrap { position: relative; flex: 1; min-width: 200px; }
+
+        .search-wrap i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray-light);
+        }
+
+        #searchInput {
+            width: 100%;
+            padding: 9px 12px 9px 36px;
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.93rem;
+            outline: none;
+            background: var(--bg);
+        }
+
+        #searchInput:focus { border-color: var(--navy-light); background: white; }
+
+        #sortSelect {
+            padding: 9px 12px;
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.88rem;
+            outline: none;
+            background: var(--bg);
+            color: var(--text);
+            cursor: pointer;
+        }
+
+        .filters { display: flex; gap: 6px; flex-wrap: wrap; }
+
+        .filter-btn {
+            padding: 7px 14px;
+            border: 1.5px solid var(--border);
+            background: var(--bg);
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.83rem;
+            font-weight: 600;
+            color: var(--gray);
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+
+        .filter-btn:hover { border-color: var(--navy-light); color: var(--navy-light); background: white; }
+        .filter-btn.active { background: var(--navy); color: white; border-color: var(--navy); }
+
+        /* ── Stats ───────────────────────────────────────────── */
+        .stats-row {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 16px 24px 0;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border-radius: 10px;
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+            min-width: 130px;
+            flex: 1;
+        }
+
+        .stat-icon {
+            width: 38px; height: 38px;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem; flex-shrink: 0;
+        }
+
+        .stat-icon.navy   { background: #dbeafe; color: var(--navy); }
+        .stat-icon.green  { background: #dcfce7; color: var(--green); }
+        .stat-icon.orange { background: #ffedd5; color: var(--orange); }
+        .stat-icon.gold   { background: #fef9c3; color: #92400e; }
+
+        .stat-number { font-size: 1.6rem; font-weight: 700; color: var(--navy); line-height: 1; }
+        .stat-label  { font-size: 0.78rem; color: var(--gray-light); font-weight: 500; margin-top: 2px; }
+
+        /* ── Grid ────────────────────────────────────────────── */
+        .grid-wrap {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 16px 24px 40px;
+        }
+
+        #properties-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px;
+        }
+
+        .property-card {
+            background: var(--surface);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            border: 1px solid var(--border);
+        }
+
+        .property-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+        }
+
+        .card-image {
+            background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+            height: 130px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-image svg { width: 60px; opacity: 0.2; fill: white; }
+
+        .card-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+        .card-badge-tl {
+            position: absolute; top: 8px; left: 8px;
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(4px);
             color: white;
-        }
-        
-        .property-details {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 10px;
-            margin-top: 12px;
-        }
-        .detail-row {
-            display: grid;
-            grid-template-columns: 140px 1fr;
-            gap: 10px;
-        }
-        .detail-label {
-            font-size: 0.85em;
-            color: #666;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 0.72rem;
             font-weight: 600;
         }
-        .detail-value {
-            font-size: 0.95em;
-            color: #333;
-            font-weight: 500;
+
+        .card-badge-tr {
+            position: absolute; top: 8px; right: 8px;
+            background: var(--accent);
+            color: var(--navy);
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            font-weight: 700;
         }
-        .price {
-            color: #c8102e;
-            font-size: 1.4em;
-            font-weight: bold;
+
+        .card-body { padding: 14px 16px; }
+
+        .status-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.76rem;
+            font-weight: 700;
+            margin-bottom: 8px;
         }
-        .email-count {
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid #eee;
-            font-size: 0.9em;
-            color: #666;
+
+        .s-active           { background: #dcfce7; color: #15803d; }
+        .s-price-reduction  { background: #fef9c3; color: #92400e; }
+        .s-highest-and-best { background: #fee2e2; color: #b91c1c; }
+        .s-pending          { background: #ede9fe; color: #6d28d9; }
+        .s-sold             { background: #f1f5f9; color: #475569; }
+        .s-t-o-t-m          { background: #ffedd5; color: #c2410c; }
+        .s-hold             { background: #f5f3ff; color: #7c3aed; }
+        .s-in-contract      { background: #dbeafe; color: #1d4ed8; }
+
+        .card-price   { font-size: 1.45rem; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+        .card-address { font-size: 0.88rem; color: var(--gray); margin-bottom: 2px; line-height: 1.35; }
+        .card-mls     { font-size: 0.8rem; color: var(--gray-light); margin-bottom: 12px; }
+
+        .card-footer { display: flex; gap: 6px; flex-wrap: wrap; }
+
+        .btn-email {
+            flex: 1;
+            padding: 8px;
+            background: var(--navy);
+            color: white;
+            border: none;
+            border-radius: 7px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+            white-space: nowrap;
         }
-        
-        /* ====== MODALS ====== */
+
+        .btn-email:hover { background: var(--navy-mid); }
+
+        .btn-photos {
+            padding: 8px 11px;
+            background: var(--accent);
+            color: var(--navy);
+            border: none;
+            border-radius: 7px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.15s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+
+        .btn-photos:hover { background: var(--accent-light); }
+
+        .btn-foil {
+            padding: 8px 11px;
+            background: var(--foil-red);
+            color: white;
+            border: none;
+            border-radius: 7px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.15s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+
+        .btn-foil:hover { background: #a50d26; }
+
+        /* ── Modal ───────────────────────────────────────────── */
         .modal {
             display: none;
             position: fixed;
+            inset: 0;
+            background: rgba(15,45,74,0.6);
             z-index: 1000;
-            left: 0; top: 0;
-            width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            animation: fadeIn 0.3s;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
         }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        
+
         .modal-content {
-            background-color: white;
-            margin: 5% auto;
-            padding: 30px;
-            border-radius: 10px;
-            width: 90%;
-            max-width: 600px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
-            animation: slideIn 0.3s;
+            background: var(--surface);
+            border-radius: 12px;
+            max-width: 680px;
+            width: 100%;
+            max-height: 88vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
-        @keyframes slideIn {
-            from { transform: translateY(-50px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
+
         .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-        }
-        .modal-header h2 { color: #1a3a52; font-size: 1.5em; }
-        .close {
-            font-size: 2em;
-            font-weight: bold;
-            color: #aaa;
-            cursor: pointer;
-            line-height: 1;
-        }
-        .close:hover { color: #000; }
-        .modal-body { margin-bottom: 20px; }
-        
-        .form-group { margin-bottom: 20px; }
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: #333;
-            font-weight: 600;
-        }
-        .form-group select {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 5px;
-            font-size: 1em;
-            background: white;
-            cursor: pointer;
-        }
-        .form-group select:focus {
-            outline: none;
-            border-color: #1a3a52;
-        }
-        
-        .btn-forward {
-            width: 100%;
-            padding: 12px;
-            background: #c8102e;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-size: 1.1em;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.3s ease;
-        }
-        .btn-forward:hover { background: #a00d24; }
-        .btn-forward:disabled { background: #ccc; cursor: not-allowed; }
-        
-        /* Attachment list in modal */
-        .att-list {
-            max-height: 250px;
-            overflow-y: auto;
-            margin: 15px 0;
-        }
-        .att-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 12px;
-            border-bottom: 1px solid #f0f0f0;
-            font-size: 0.9em;
-        }
-        .att-item:last-child { border-bottom: none; }
-        .att-item .att-name { color: #333; flex: 1; }
-        .att-item .att-tag {
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.8em;
-            font-weight: 600;
-            margin-left: 8px;
-        }
-        .att-tag.foil { background: #c8102e; color: white; }
-        .att-tag.general { background: #e9ecef; color: #666; }
-        
-        /* Enhanced attachment items with download links */
-        .att-item-foil {
-            background: #fff5f6;
-            border-left: 4px solid #c8102e;
-            border-radius: 4px;
-            margin-bottom: 4px;
-        }
-        .att-foil-banner {
-            background: #c8102e;
-            color: white;
-            font-size: 0.78em;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            padding: 3px 10px;
-            border-radius: 3px 3px 0 0;
-        }
-        .att-item-main {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 12px;
-        }
-        .att-actions {
-            display: flex;
-            gap: 6px;
-            flex-shrink: 0;
-            margin-left: 10px;
-        }
-        .att-action-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-size: 0.8em;
-            font-weight: 600;
-            text-decoration: none;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            white-space: nowrap;
-        }
-        .att-view-btn {
-            border: 1.5px solid #1a3a52;
-            background: white;
-            color: #1a3a52;
-        }
-        .att-view-btn:hover {
-            background: #1a3a52;
-            color: white;
-        }
-        .att-download-btn {
-            border: 1.5px solid #c8102e;
-            background: #c8102e;
-            color: white;
-        }
-        .att-download-btn:hover {
-            background: #a00d24;
-        }
-        .att-no-access {
-            font-size: 0.78em;
-            color: #aaa;
-            margin-left: 10px;
-            flex-shrink: 0;
-        }
-        
-        .btn-send-all {
-            width: 100%;
-            padding: 14px;
-            background: #1a3a52;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.1em;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.3s ease;
-        }
-        .btn-send-all:hover { background: #0d2133; }
-        .btn-send-all:disabled { background: #ccc; cursor: not-allowed; }
-        .btn-send-all.sending { background: #ffc107; color: #333; }
-        
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: white;
-            font-size: 1.2em;
-        }
-        .error {
-            text-align: center;
-            padding: 40px;
-            color: #dc3545;
-            font-size: 1.2em;
-            background: white;
-            border-radius: 10px;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        .toast {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            padding: 16px 24px;
-            border-radius: 8px;
-            color: white;
-            font-weight: 600;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            z-index: 2000;
-            animation: slideUp 0.3s ease;
-        }
-        .toast.success { background: #28a745; }
-        .toast.error { background: #dc3545; }
-        @keyframes slideUp {
-            from { transform: translateY(20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+            padding: 18px 24px;
+            border-bottom: 1px solid var(--border);
+            background: var(--navy);
+            border-radius: 12px 12px 0 0;
         }
 
-        @media (max-width: 768px) {
-            .control-row { grid-template-columns: 1fr; }
-            .detail-row { grid-template-columns: 1fr; }
-            .properties-grid { grid-template-columns: 1fr; }
-            .card-action-row { flex-direction: column; }
+        .modal-header h2 { color: white; font-size: 1.1rem; }
+
+        .modal-close {
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: white;
+            width: 30px; height: 30px;
+            border-radius: 50%;
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .modal-close:hover { background: rgba(255,255,255,0.3); }
+
+        .modal-body { padding: 20px 24px; }
+
+        .form-group { margin-bottom: 16px; }
+
+        .form-group label {
+            display: block;
+            font-size: 0.83rem;
+            font-weight: 600;
+            color: var(--gray);
+            margin-bottom: 6px;
+        }
+
+        .form-group select {
+            width: 100%;
+            padding: 9px 12px;
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .form-group select:focus { border-color: var(--navy-light); }
+
+        .email-meta {
+            background: var(--bg);
+            border-radius: 8px;
+            padding: 14px;
+            font-size: 0.88rem;
+            line-height: 1.8;
+        }
+
+        .email-meta strong { color: var(--navy); }
+
+        .attach-box {
+            background: #fef9c3;
+            border-left: 3px solid var(--accent);
+            border-radius: 6px;
+            padding: 10px 14px;
+            margin-top: 10px;
+            font-size: 0.85rem;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+        }
+
+        .btn-send {
+            flex: 1;
+            padding: 11px;
+            background: var(--navy);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .btn-send:hover { background: var(--navy-mid); }
+
+        .btn-cancel {
+            padding: 11px 20px;
+            background: var(--bg);
+            color: var(--gray);
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-cancel:hover { background: var(--border); }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--gray-light);
+            grid-column: 1/-1;
+        }
+
+        .empty-state i { font-size: 3rem; margin-bottom: 16px; display: block; }
+
+        @media (max-width: 700px) {
+            .header-inner { flex-wrap: wrap; gap: 10px; }
+            .agent-email-wrap input { width: 160px; }
+            .controls-inner { flex-direction: column; align-items: stretch; }
+            #sortSelect { width: 100%; }
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>🏝️ Island Advantage Property Management</h1>
-        <p>Real-time REO Property Tracking System</p>
-        <div style="margin-top: 1.5rem;">
-            <a href="/admin" style="display: inline-block; padding: 0.75rem 1.5rem; background: rgba(255,255,255,0.2); color: white; text-decoration: none; border-radius: 5px; font-weight: 600; transition: background 0.2s;">
-                🔧 Admin Dashboard
+
+<!-- ── Header ─────────────────────────────────────────────── -->
+<div class="header">
+    <div class="header-inner">
+        <div class="logo-area">
+            <img src="/static/logo_header.png" alt="Island Advantage Realty"
+                 onerror="this.style.display='none'; document.querySelector('.logo-fallback').style.display='block';">
+            <span class="logo-fallback">Island Advantage Realty</span>
+        </div>
+        <div class="header-right">
+            <div class="agent-email-wrap">
+                <label><i class="fas fa-user"></i> Agent:</label>
+                <input type="email" id="agentEmail" placeholder="agent@islandadvantage.com" value="todd@islandadvantage.com">
+            </div>
+            <a href="#" class="btn-admin" onclick="checkAdminPassword(event)">
+                <i class="fas fa-cog"></i> Admin
             </a>
         </div>
     </div>
+</div>
 
-    <div class="top-controls">
-        <div class="control-row">
-            <div class="control-group">
-                <label for="searchInput">🔍 Search Properties</label>
-                <input type="text" id="searchInput" class="search-input" placeholder="Search by address, city, financing...">
-            </div>
-            <div class="control-group">
-                <label for="recipientEmail">📧 Agent Email (for forwarding)</label>
-                <input type="email" id="recipientEmail" class="email-input" placeholder="agent@email.com" value="">
-            </div>
+<!-- ── Controls ───────────────────────────────────────────── -->
+<div class="controls-bar">
+    <div class="controls-inner">
+        <div class="search-wrap">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchInput" placeholder="Search address, MLS, status…">
+        </div>
+        <select id="sortSelect">
+            <option value="most-recent">Most Recent</option>
+            <option value="oldest">Oldest</option>
+            <option value="price-reduction-recent">Recent Price Reduction</option>
+            <option value="price-reduction-oldest">Oldest Price Reduction</option>
+        </select>
+        <div class="filters">
+            <button class="filter-btn active" onclick="doFilter('all', event)">All</button>
+            <button class="filter-btn" onclick="doFilter('active', event)">Active</button>
+            <button class="filter-btn" onclick="doFilter('price-reduction', event)">Price Reduced</button>
+            <button class="filter-btn" onclick="doFilter('highest-best', event)">H&amp;B</button>
+            <button class="filter-btn" onclick="doFilter('pending', event)">Pending</button>
+            <button class="filter-btn" onclick="doFilter('in-contract', event)">In Contract</button>
+            <button class="filter-btn" onclick="doFilter('sold', event)">Sold</button>
+            <button class="filter-btn" onclick="doFilter('t-o-t-m', event)">T-O-T-M</button>
+            <button class="filter-btn" onclick="doFilter('hold', event)">Hold</button>
         </div>
     </div>
-    
-    <div class="controls">
-        <div class="filter-section">
-            <h3>Filter by Status</h3>
-            <div class="filter-buttons">
-                <button class="filter-btn active" data-status="all">All Properties</button>
-                <button class="filter-btn" data-status="Active">Active</button>
-                <button class="filter-btn" data-status="Auction Available">Auction</button>
-                <button class="filter-btn" data-status="First Accepted">First Accepted</button>
-                <button class="filter-btn" data-status="Highest & Best">Highest & Best</button>
-                <button class="filter-btn" data-status="In Contract">In Contract</button>
-                <button class="filter-btn" data-status="Sold">Sold</button>
-                <button class="filter-btn" data-status="TOTM">TOTM</button>
-                <button class="filter-btn" data-status="has_attachments">Has Attachments</button>
-                <button class="filter-btn" data-status="has_foil">Has FOIL</button>
-            </div>
-        </div>
-        
-        <div class="filter-section">
-            <h3>Sort Properties</h3>
-            <div class="sort-buttons">
-                <button class="sort-btn active" data-sort="recent">Most Recent</button>
-                <button class="sort-btn" data-sort="oldest">Oldest First</button>
-                <button class="sort-btn" data-sort="price-high">Highest Price</button>
-                <button class="sort-btn" data-sort="price-low">Lowest Price</button>
-                <button class="sort-btn" data-sort="attachments">Most Attachments</button>
-                <button class="sort-btn" data-sort="hb-due">H&B Due (Soonest)</button>
-            </div>
-        </div>
+</div>
+
+<!-- ── Stats ──────────────────────────────────────────────── -->
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-icon navy"><i class="fas fa-building"></i></div>
+        <div><div class="stat-number" id="totalCount">–</div><div class="stat-label">Total</div></div>
     </div>
-    
+    <div class="stat-card">
+        <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+        <div><div class="stat-number" id="activeCount">–</div><div class="stat-label">Active</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange"><i class="fas fa-envelope"></i></div>
+        <div><div class="stat-number" id="withEmailCount">–</div><div class="stat-label">With Email</div></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon gold"><i class="fas fa-tag"></i></div>
+        <div><div class="stat-number" id="priceRedCount">–</div><div class="stat-label">Price Reduced</div></div>
+    </div>
+</div>
+
+<!-- ── Property Grid ──────────────────────────────────────── -->
+<div class="grid-wrap">
     <div id="properties-container">
-        <div class="loading">Loading properties...</div>
+        <div class="empty-state"><i class="fas fa-spinner fa-spin"></i>Loading properties…</div>
     </div>
-    
-    <!-- Attachment Modal -->
-    <div id="attachModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="attachModalTitle">📎 Property Attachments</h2>
-                <span class="close" id="attachClose">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div id="attachList" class="att-list">
-                    <p>Loading attachments...</p>
-                </div>
-                <button id="sendAllBtn" class="btn-send-all" disabled>
-                    📧 Email All Attachments to Agent
-                </button>
-            </div>
+</div>
+
+<!-- ── Email Modal ────────────────────────────────────────── -->
+<div class="modal" id="emailModal">
+    <div class="modal-content" id="emailModalContent">
+        <div style="padding:40px;text-align:center;color:var(--gray-light);">
+            <i class="fas fa-spinner fa-spin" style="font-size:2rem;"></i>
         </div>
     </div>
+</div>
 
-    <!-- Email Forward Modal -->
-    <div id="emailModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Forward Property Email</h2>
-                <span class="close" id="emailClose">&times;</span>
-            </div>
-            <div class="modal-body">
-                <p style="margin-bottom: 20px; color: #666;">Select an email to forward:</p>
-                <div class="form-group">
-                    <label for="emailSelect">Available Emails:</label>
-                    <select id="emailSelect" size="5">
-                        <option value="">Loading emails...</option>
-                    </select>
-                </div>
-                <button id="forwardBtn" class="btn-forward" disabled>Forward Selected Email</button>
-            </div>
-        </div>
-    </div>
+<script>
+    /* ADMIN-PASS-5778 */
+    function checkAdminPassword(e) {
+        e.preventDefault();
+        const pw = prompt('Admin password:');
+        if (pw === '5778') { window.location = '/admin'; }
+        else if (pw !== null) { alert('Incorrect password.'); }
+    }
 
-    <script>
-        let allProperties = [];
-        let currentFilter = 'all';
-        let currentSort = 'recent';
-        let currentSearch = '';
-        let selectedProperty = null;
-        let propertyEmailCounts = {};
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            loadProperties();
-            setupEventListeners();
-        });
-        
-        function setupEventListeners() {
-            document.getElementById('searchInput').addEventListener('input', function(e) {
-                currentSearch = e.target.value.toLowerCase();
-                renderProperties();
-            });
+    let allProperties = [], currentFilter = 'all', currentSort = 'most-recent';
+    let currentPropertyId = null, propertyEmails = [];
 
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                    currentFilter = this.dataset.status;
-                    // Auto-sort by H&B due date when that filter is selected
-                    if (currentFilter === 'Highest & Best') {
-                        document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
-                        const hbSortBtn = document.querySelector('.sort-btn[data-sort="hb-due"]');
-                        if (hbSortBtn) hbSortBtn.classList.add('active');
-                        currentSort = 'hb-due';
-                    }
-                    renderProperties();
-                });
-            });
-            
-            document.querySelectorAll('.sort-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                    currentSort = this.dataset.sort;
-                    renderProperties();
-                });
-            });
-            
-            // Attachment modal
-            document.getElementById('attachClose').addEventListener('click', () => {
-                document.getElementById('attachModal').style.display = 'none';
-            });
-            document.getElementById('sendAllBtn').addEventListener('click', sendAllAttachments);
-            
-            // Email modal
-            document.getElementById('emailClose').addEventListener('click', () => {
-                document.getElementById('emailModal').style.display = 'none';
-            });
-            document.getElementById('emailSelect').addEventListener('change', function() {
-                document.getElementById('forwardBtn').disabled = !this.value;
-            });
-            document.getElementById('forwardBtn').addEventListener('click', forwardEmail);
-            
-            // Close modals on background click
-            window.addEventListener('click', function(event) {
-                if (event.target == document.getElementById('attachModal')) {
-                    document.getElementById('attachModal').style.display = 'none';
-                }
-                if (event.target == document.getElementById('emailModal')) {
-                    document.getElementById('emailModal').style.display = 'none';
-                }
-            });
+    const savedEmail = localStorage.getItem('agentEmail');
+    if (savedEmail) document.getElementById('agentEmail').value = savedEmail;
+    document.getElementById('agentEmail').addEventListener('change', function() {
+        localStorage.setItem('agentEmail', this.value);
+    });
+    document.getElementById('searchInput').addEventListener('input', renderProperties);
+    document.getElementById('sortSelect').addEventListener('change', function() {
+        currentSort = this.value;
+        localStorage.setItem('sortPref_' + currentFilter, currentSort);
+        loadProperties();
+    });
+
+    async function loadProperties() {
+        document.getElementById('properties-container').innerHTML =
+            '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Loading…</div>';
+        try {
+            const statusMap = {
+                'active':'Active', 'price-reduction':'Price Reduction',
+                'highest-best':'Highest & Best', 'pending':'Pending',
+                'in-contract':'In Contract', 'sold':'Sold',
+                't-o-t-m':'T-O-T-M', 'hold':'Hold'
+            };
+            let url = '/api/properties?sort=' + currentSort;
+            if (currentFilter !== 'all')
+                url += '&status=' + encodeURIComponent(statusMap[currentFilter]);
+            const data = await fetch(url).then(r => r.json());
+            allProperties = data.properties || [];
+            updateStats();
+            renderProperties();
+        } catch(err) {
+            document.getElementById('properties-container').innerHTML =
+                '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><br>Error loading properties</div>';
         }
-        
-        async function loadProperties() {
-            try {
-                // Always load with show_totm so admin can see TOTM properties via filter
-                const response = await fetch('/api/properties?show_totm=true');
-                if (!response.ok) throw new Error('Failed to load properties');
-                const data = await response.json();
-                
-                allProperties = Array.isArray(data) ? data : (data.properties || []);
-                
-                await loadEmailCounts();
-                
-                console.log(`Loaded ${allProperties.length} properties`);
-                renderProperties();
-            } catch (error) {
-                console.error('Load error:', error);
-                document.getElementById('properties-container').innerHTML = 
-                    `<div class="error">Error loading properties: ${error.message}</div>`;
-            }
+    }
+
+    function updateStats() {
+        document.getElementById('totalCount').textContent = allProperties.length;
+        document.getElementById('activeCount').textContent =
+            allProperties.filter(p => p.current_status === 'Active').length;
+        document.getElementById('withEmailCount').textContent =
+            allProperties.filter(p => p.has_attachments).length;
+        document.getElementById('priceRedCount').textContent =
+            allProperties.filter(p => p.current_status === 'Price Reduction').length;
+    }
+
+    function renderProperties() {
+        const term = document.getElementById('searchInput').value.toLowerCase();
+        let list = allProperties;
+        if (term) list = list.filter(p =>
+            (p.address||'').toLowerCase().includes(term) ||
+            (p.mls_number||'').toLowerCase().includes(term) ||
+            (p.current_status||'').toLowerCase().includes(term)
+        );
+
+        const container = document.getElementById('properties-container');
+        if (!list.length) {
+            container.innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><br>No properties found</div>';
+            return;
         }
 
-        async function loadEmailCounts() {
-            const promises = allProperties.map(async (property) => {
-                try {
-                    const response = await fetch(`/api/properties/${property.id}/emails`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        propertyEmailCounts[property.id] = (data.emails || []).length;
-                    }
-                } catch (error) {
-                    propertyEmailCounts[property.id] = 0;
-                }
-            });
-            await Promise.all(promises);
-        }
-        
-        function normalizeStatus(status) {
-            if (!status) return '';
-            // Normalize variant status labels to canonical forms
-            let normalized = status;
-            if (normalized === '1st Accept' || normalized === '1st Accepted') {
-                normalized = 'First Accepted';
-            }
-            if (normalized === 'Available' || normalized === 'LPP') {
-                normalized = 'Auction Available';
-            }
-            if (normalized === 'Highest and Best' || normalized === 'Highest & Best') {
-                return 'highest-and-best';
-            }
-            if (normalized === 'TOTM' || normalized === 'T-O-T-M' || normalized.toLowerCase() === 'temporarily off the market') {
-                return 'totm';
-            }
-            // All In Contract / Pending variants → same CSS class
-            const lc = normalized.toLowerCase();
-            if (lc === 'in contract' || lc === 'pending' || lc === 'under contract' || lc === 'pended') {
-                return 'in-contract';
-            }
-            return normalized.toLowerCase().replace(/\s+/g, '-').replace(/&/g, 'and');
-        }
-        
-        function displayStatus(status) {
-            if (!status) return 'Unknown';
-            if (status === '1st Accept' || status === '1st Accepted') return 'First Accepted';
-            if (status === 'T-O-T-M' || status.toLowerCase() === 'temporarily off the market') return 'TOTM';
-            // All "In Contract" variants → display as "In Contract"
-            const lc = status.toLowerCase();
-            if (lc === 'pending' || lc === 'under contract' || lc === 'in contract' || lc === 'pended') return 'In Contract';
-            // Available aliases
-            if (status === 'Available' || status === 'LPP') return 'Auction Available';
-            return status;
-        }
-        
-        function filterProperties() {
-            let filtered = allProperties;
+        const sc = s => (s||'active').toLowerCase().replace(/\s+/g,'-').replace(/&/g,'and').replace(/[^a-z0-9-]/g,'');
 
-            if (currentFilter === 'has_attachments') {
-                // Hide TOTM from attachment filter too
-                filtered = filtered.filter(p => (p.total_attachments || p.attachment_count || 0) > 0 && displayStatus(p.current_status) !== 'TOTM');
-            } else if (currentFilter === 'has_foil') {
-                filtered = filtered.filter(p => (p.foil_count || 0) > 0 && displayStatus(p.current_status) !== 'TOTM');
-            } else if (currentFilter === 'TOTM') {
-                // Explicitly show TOTM properties when that filter is selected
-                filtered = filtered.filter(p => displayStatus(p.current_status) === 'TOTM');
-            } else if (currentFilter !== 'all') {
-                filtered = filtered.filter(p => {
-                    const pStatus = displayStatus(p.current_status);
-                    return pStatus === currentFilter;
-                });
-            } else {
-                // "All" filter: hide TOTM properties from public view
-                filtered = filtered.filter(p => displayStatus(p.current_status) !== 'TOTM');
-            }
+        container.innerHTML = list.map(p => {
+            const price = (p.current_list_price || p.price) ? '$' + Number(p.current_list_price || p.price).toLocaleString() : 'Price N/A';
 
-            if (currentSearch) {
-                filtered = filtered.filter(property => {
-                    const searchStr = `${property.address} ${property.address_2 || ''} ${property.current_status} ${displayStatus(property.current_status)} ${property.financing_type || ''} ${property.agent_access || ''} ${property.occupancy_status || ''}`.toLowerCase();
-                    return searchStr.includes(currentSearch);
-                });
-            }
+            // Image area — use primary_photo_url if available
+            const imgArea = p.primary_photo_url
+                ? `<img src="${p.primary_photo_url}" class="card-photo"
+                       onerror="this.style.display='none'">`
+                : `<svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>`;
 
-            return filtered;
-        }
-        
-        function sortProperties(properties) {
-            const sorted = [...properties];
-            switch(currentSort) {
-                case 'recent':
-                    sorted.sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
-                    break;
-                case 'oldest':
-                    sorted.sort((a, b) => new Date(a.updated_at || a.created_at) - new Date(b.updated_at || b.created_at));
-                    break;
-                case 'price-high':
-                    sorted.sort((a, b) => (parseFloat(b.current_list_price) || 0) - (parseFloat(a.current_list_price) || 0));
-                    break;
-                case 'price-low':
-                    sorted.sort((a, b) => (parseFloat(a.current_list_price) || 0) - (parseFloat(b.current_list_price) || 0));
-                    break;
-                case 'attachments':
-                    sorted.sort((a, b) => (b.total_attachments || 0) - (a.total_attachments || 0));
-                    break;
-                case 'hb-due':
-                    sorted.sort((a, b) => {
-                        const aDate = a.highest_best_due_at ? new Date(a.highest_best_due_at).getTime() : Infinity;
-                        const bDate = b.highest_best_due_at ? new Date(b.highest_best_due_at).getTime() : Infinity;
-                        return aDate - bDate;
-                    });
-                    break;
-            }
-            return sorted;
-        }
-        
-        function renderProperties() {
-            const filtered = filterProperties();
-            const sorted = sortProperties(filtered);
-            
-            if (sorted.length === 0) {
-                document.getElementById('properties-container').innerHTML = 
-                    '<div class="loading">No properties found for this filter.</div>';
-                return;
-            }
-            
-            const html = `
-                <div class="properties-grid">
-                    ${sorted.map(p => createPropertyCard(p)).join('')}
-                </div>
-            `;
-            document.getElementById('properties-container').innerHTML = html;
-        }
-        
-        function createPropertyCard(property) {
-            const statusClass = 'status-' + normalizeStatus(property.current_status);
-            const price = property.current_list_price ? 
-                `$${parseInt(property.current_list_price).toLocaleString()}` : 'N/A';
-            const emailCount = propertyEmailCounts[property.id] || 0;
-            const holdHarmless = property.hold_harmless_required || property.agent_access === 'Proceed (Hold Harmless)';
-            const attCount = property.total_attachments || 0;
-            const foilCount = property.foil_count || 0;
-            
-            const holdHarmlessWarning = holdHarmless ? 
-                '<div class="hold-harmless-warning">⚠️ HOLD HARMLESS REQUIRED</div>' : '';
-            const cardClass = holdHarmless ? 'property-card hold-harmless' : 'property-card';
-            
-            // Attachment button styling
-            let attBtnClass = 'btn-attachments';
-            let attBtnLabel = '';
-            let attBtnIcon = '📎';
-            
-            if (attCount === 0) {
-                attBtnClass += ' no-attachments';
-                attBtnLabel = 'No Attachments';
-            } else if (foilCount > 0) {
-                attBtnClass += ' has-foil';
-                attBtnIcon = '🔴';
-                attBtnLabel = `${attCount} Attachment${attCount > 1 ? 's' : ''}`;
-            } else {
-                attBtnLabel = `${attCount} Attachment${attCount > 1 ? 's' : ''}`;
-            }
-            
-            const foilBadge = foilCount > 0 ? 
-                `<span class="foil-badge">FOIL ${foilCount}</span>` : '';
-            
+            // Action buttons
+            const photosBtn = p.primary_photo_url
+                ? `<a href="${p.primary_photo_url}" target="_blank" class="btn-photos"
+                      onclick="event.stopPropagation()">
+                     <i class="fas fa-camera"></i> Photos
+                   </a>` : '';
+
+            const foilBtn = p.foil_attachment_id
+                ? `<a href="/api/attachments/${p.foil_attachment_id}/view" target="_blank" class="btn-foil"
+                      onclick="event.stopPropagation()">
+                     <i class="fas fa-file-alt"></i> FOIL
+                   </a>` : '';
+
             return `
-                <div class="${cardClass}">
-                    ${holdHarmlessWarning}
-                    <div class="property-header">
-                        <div class="property-title">${property.address || 'Address not available'}</div>
-                        ${property.address_2 ? `<div class="property-address2">${property.address_2}</div>` : ''}
-                        <div class="status-badge ${statusClass}">${displayStatus(property.current_status || property.status)}</div>
-                    </div>
-                    
-                    <div class="doc-links-row">
-                        ${property.hh_attachment_id ? 
-                            '<a class="btn-doc-link btn-hold-harmless" href="/api/attachments/' + property.hh_attachment_id + '/view" target="_blank" title="View Hold-Harmless Document">📋 Hold-Harmless</a>' :
-                            (holdHarmless ? '<span class="btn-doc-link btn-hold-harmless disabled" title="Hold-Harmless required but no document uploaded yet">📋 Hold-Harmless (N/A)</span>' : '')
-                        }
-                        ${property.foil_attachment_id ? 
-                            '<a class="btn-doc-link btn-foil" href="/api/attachments/' + property.foil_attachment_id + '/view" target="_blank" title="View FOIL Document">📄 FOIL</a>' : 
-                            ''
-                        }
-                        ${property.primary_photo_url ? '<a class="btn-doc-link btn-photos" href="' + property.primary_photo_url + '" target="_blank" title="View Photos">📷 Photos</a>' : ''}
-                    </div>
-                    <div class="card-action-row">
-                        <button class="${attBtnClass}" 
-                                onclick="openAttachmentModal(${property.id})" 
-                                ${attCount === 0 ? 'disabled' : ''}>
-                            <span class="att-icon">${attBtnIcon}</span>
-                            <span>${attBtnLabel}</span>
-                            ${foilBadge}
+            <div class="property-card" onclick="showEmailModal(${p.id})">
+                <div class="card-image">
+                    ${imgArea}
+                    ${p.has_attachments ? '<div class="card-badge-tl"><i class="fas fa-envelope"></i> Email</div>' : ''}
+                    ${(p.attachment_count||0) > 0 ? `<div class="card-badge-tr"><i class="fas fa-paperclip"></i> ${p.attachment_count}</div>` : ''}
+                </div>
+                <div class="card-body">
+                    <span class="status-badge s-${sc(p.current_status)}">${p.current_status || 'Active'}</span>
+                    <div class="card-price">${price}</div>
+                    <div class="card-address">${p.address || '—'}</div>
+                    <div class="card-mls">MLS ${p.mls_number || 'N/A'}</div>
+                    <div class="card-footer">
+                        <button class="btn-email" onclick="event.stopPropagation(); showEmailModal(${p.id})">
+                            <i class="fas fa-paper-plane"></i> Email Me
                         </button>
-                        <button class="btn-email-fwd" onclick="openEmailModal(${property.id})">
-                            📧 Emails
-                        </button>
-                    </div>
-                    
-                    <div class="property-details">
-                        <div class="detail-row">
-                            <div class="detail-label">Price:</div>
-                            <div class="detail-value price">${price}</div>
-                        </div>
-                        ${property.financing_type ? `
-                        <div class="detail-row">
-                            <div class="detail-label">Financing:</div>
-                            <div class="detail-value">${property.financing_type}</div>
-                        </div>` : ''}
-                        ${property.seller_agent_compensation ? `
-                        <div class="detail-row">
-                            <div class="detail-label">Agent Comp:</div>
-                            <div class="detail-value">${property.seller_agent_compensation}</div>
-                        </div>` : ''}
-                        ${property.agent_access ? `
-                        <div class="detail-row">
-                            <div class="detail-label">Access:</div>
-                            <div class="detail-value">${property.agent_access}</div>
-                        </div>` : ''}
-                        ${property.occupancy_status ? `
-                        <div class="detail-row">
-                            <div class="detail-label">Occupancy:</div>
-                            <div class="detail-value">${property.occupancy_status}</div>
-                        </div>` : ''}
-                        <div class="detail-row">
-                            <div class="detail-label">Last Updated:</div>
-                            <div class="detail-value">${formatDate(property.updated_at || property.created_at)}</div>
-                        </div>
-                    </div>
-                    ${createHBDueSection(property)}
-                    <div class="email-count">
-                        📧 ${emailCount} email${emailCount !== 1 ? 's' : ''} tracked
+                        ${photosBtn}
+                        ${foilBtn}
                     </div>
                 </div>
-            `;
-        }
-        
-        function createHBDueSection(property) {
-            const status = displayStatus(property.current_status || property.status);
-            if (status !== 'Highest & Best') return '';
-            
-            const dueAt = property.highest_best_due_at;
-            if (!dueAt) {
-                return '<div class="hb-due-date"><span class="hb-label">⏰ Highest & Best Due:</span> Not provided</div>';
+            </div>`;
+        }).join('');
+    }
+
+    function doFilter(filter, event) {
+        currentFilter = filter;
+        const saved = localStorage.getItem('sortPref_' + filter);
+        if (saved) { currentSort = saved; document.getElementById('sortSelect').value = saved; }
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        if (event && event.target) event.target.classList.add('active');
+        loadProperties();
+    }
+
+    async function showEmailModal(propertyId) {
+        currentPropertyId = propertyId;
+        const modal = document.getElementById('emailModal');
+        const content = document.getElementById('emailModalContent');
+        content.innerHTML = '<div style="padding:40px;text-align:center;color:var(--gray-light);"><i class="fas fa-spinner fa-spin" style="font-size:2rem;"></i></div>';
+        modal.style.display = 'flex';
+
+        try {
+            const data = await fetch('/api/properties/' + propertyId + '/emails').then(r => r.json());
+            if (data.emails && data.emails.length > 0) {
+                propertyEmails = data.emails;
+                renderEmailSelector();
+            } else {
+                content.innerHTML = `
+                    <div class="modal-header"><h2>Property Emails</h2>
+                        <button class="modal-close" onclick="closeEmailModal()">&times;</button></div>
+                    <div style="padding:40px;text-align:center;color:var(--gray-light);">
+                        <i class="fas fa-inbox" style="font-size:2.5rem;display:block;margin-bottom:12px;"></i>
+                        No emails for this property.</div>
+                    <div class="modal-footer"><button class="btn-cancel" onclick="closeEmailModal()">Close</button></div>`;
             }
-            
-            const dueDate = new Date(dueAt);
-            const now = new Date();
-            const hoursLeft = (dueDate - now) / (1000 * 60 * 60);
-            
-            const formatted = dueDate.toLocaleDateString('en-US', { 
-                month: 'short', day: 'numeric', year: 'numeric' 
-            }) + ' at ' + dueDate.toLocaleTimeString('en-US', { 
-                hour: 'numeric', minute: '2-digit' 
-            });
-            
-            let urgencyClass = '';
-            let urgencyIcon = '⏰';
-            if (hoursLeft < 0) {
-                urgencyClass = 'hb-urgent';
-                urgencyIcon = '⚠️';
-            } else if (hoursLeft < 24) {
-                urgencyClass = 'hb-urgent';
-                urgencyIcon = '🔥';
-            }
-            
-            return `<div class="hb-due-date"><span class="hb-label">${urgencyIcon} Highest & Best Due:</span> <span class="${urgencyClass}">${formatted}</span></div>`;
+        } catch(err) {
+            content.innerHTML = `
+                <div class="modal-header"><h2>Error</h2>
+                    <button class="modal-close" onclick="closeEmailModal()">&times;</button></div>
+                <div style="padding:40px;text-align:center;color:var(--red);">Failed to load emails.</div>
+                <div class="modal-footer"><button class="btn-cancel" onclick="closeEmailModal()">Close</button></div>`;
         }
-        
-        function formatDate(dateString) {
-            if (!dateString) return 'N/A';
-            const date = new Date(dateString);
-            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function renderEmailSelector() {
+        const content = document.getElementById('emailModalContent');
+        const prop = allProperties.find(p => p.id === currentPropertyId) || {};
+        const options = propertyEmails.map(e => {
+            const d = new Date(e.email_date).toLocaleDateString();
+            const t = new Date(e.email_date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+            const att = e.has_attachments ? ` (${e.attachment_count} att.)` : '';
+            const latest = e.is_latest ? ' ✓ Latest' : '';
+            return `<option value="${e.id}">${e.email_subject} — ${d} ${t}${att}${latest}</option>`;
+        }).join('');
+
+        content.innerHTML = `
+            <div class="modal-header">
+                <h2><i class="fas fa-envelope"></i> ${prop.address || 'Property'}</h2>
+                <button class="modal-close" onclick="closeEmailModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Select Email (${propertyEmails.length} on record)</label>
+                    <select id="emailSelector" onchange="updateEmailDisplay()">${options}</select>
+                </div>
+                <div id="emailDisplay"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-send" onclick="forwardSelectedEmail()">
+                    <i class="fas fa-paper-plane"></i> Email Me This Property
+                </button>
+                <button class="btn-cancel" onclick="closeEmailModal()">Cancel</button>
+            </div>`;
+        updateEmailDisplay();
+    }
+
+    function updateEmailDisplay() {
+        const sel = document.getElementById('emailSelector');
+        if (!sel) return;
+        const email = propertyEmails.find(e => e.id === parseInt(sel.value));
+        if (!email) return;
+        const attachHtml = email.has_attachments
+            ? `<div class="attach-box">
+                 <strong><i class="fas fa-paperclip"></i> ${email.attachment_count} Attachment(s)</strong>
+                 ${email.attachment_names && email.attachment_names.length
+                   ? '<div style="margin-top:4px;font-size:0.83rem;color:var(--gray);">' + email.attachment_names.join(', ') + '</div>'
+                   : ''}
+               </div>` : '';
+        document.getElementById('emailDisplay').innerHTML = `
+            <div class="email-meta">
+                <div><strong>From:</strong> ${email.email_from}</div>
+                <div><strong>Subject:</strong> ${email.email_subject}</div>
+                <div><strong>Date:</strong> ${new Date(email.email_date).toLocaleString()}</div>
+            </div>${attachHtml}`;
+    }
+
+    async function forwardSelectedEmail() {
+        const sel = document.getElementById('emailSelector');
+        const emailId = parseInt(sel.value);
+        const email = propertyEmails.find(e => e.id === emailId);
+        const agentEmail = document.getElementById('agentEmail').value;
+        if (!agentEmail || !agentEmail.includes('@')) {
+            alert('Please enter a valid email address in the header first.');
+            return;
         }
-        
-        // ====== ATTACHMENT MODAL ======
-        async function openAttachmentModal(propertyId) {
-            selectedProperty = allProperties.find(p => p.id == propertyId);
-            if (!selectedProperty) return;
-            
-            const modal = document.getElementById('attachModal');
-            const list = document.getElementById('attachList');
-            const btn = document.getElementById('sendAllBtn');
-            
-            modal.style.display = 'block';
-            list.innerHTML = '<p style="text-align:center;color:#999;">Loading attachments...</p>';
-            btn.disabled = true;
-            
-            document.getElementById('attachModalTitle').textContent = 
-                `📎 Attachments: ${selectedProperty.address || 'Property'}`;
-            
-            try {
-                const response = await fetch(`/api/properties/${propertyId}/attachments`);
-                if (!response.ok) throw new Error('Failed to load attachments');
-                const data = await response.json();
-                
-                const attachments = data.attachments || [];
-                
-                if (attachments.length === 0) {
-                    list.innerHTML = '<p style="text-align:center;color:#999;">No attachments found.</p>';
-                    return;
-                }
-                
-                list.innerHTML = attachments.map(att => {
-                    const tagClass = att.is_foil ? 'foil' : 'general';
-                    const tagText = att.is_foil ? 'FOIL' : att.category;
-                    const size = att.file_size ? `(${(att.file_size / 1024).toFixed(0)} KB)` : '';
-                    const fromEmail = att.email_subject ? `<div style="font-size:0.8em;color:#999;margin-top:2px;">${att.email_subject}</div>` : '';
-                    const hasGmail = att.gmail_attachment_id && att.gmail_message_id;
-                    
-                    const foilBanner = att.is_foil ? `<div class="att-foil-banner">🔴 FOIL DOCUMENT</div>` : '';
-                    const itemClass = att.is_foil ? 'att-item att-item-foil' : 'att-item';
-                    
-                    const viewBtn = hasGmail ? 
-                        `<a href="/api/attachments/${att.id}/view" target="_blank" class="att-action-btn att-view-btn" title="Open PDF in new tab">👁️ View</a>` : '';
-                    const dlBtn = hasGmail ? 
-                        `<a href="/api/attachments/${att.id}/download" download="${att.filename}" class="att-action-btn att-download-btn" title="Download PDF to your computer">⬇️ Save</a>` : '';
-                    const noAccess = !hasGmail ? `<span class="att-no-access">⚠️ Unavailable</span>` : '';
-                    
-                    return `
-                        <div class="${itemClass}">
-                            ${foilBanner}
-                            <div class="att-item-main">
-                                <div style="flex:1;min-width:0;">
-                                    <div class="att-name">📄 ${att.filename} ${size}</div>
-                                    ${fromEmail}
-                                </div>
-                                <span class="att-tag ${tagClass}">${tagText}</span>
-                            </div>
-                            <div style="display:flex;align-items:center;gap:6px;padding:0 12px 8px 12px;">
-                                <div class="att-actions">${viewBtn}${dlBtn}${noAccess}</div>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-                
-                const foilCount = data.foil_count || 0;
-                const foilNote = foilCount > 0 ? ` (includes ${foilCount} FOIL)` : '';
-                btn.textContent = `📧 Email All ${attachments.length} Attachments${foilNote}`;
+        const btn = document.querySelector('.btn-send');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending…';
+        try {
+            const data = await fetch('/api/email-property-by-email-id', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    property_id: currentPropertyId,
+                    email_id: emailId,
+                    agent_email: agentEmail
+                })
+            }).then(r => r.json());
+            if (data.success) {
+                alert('✓ Sent to ' + agentEmail + '\n\n' + email.email_subject + '\nAttachments: ' + (email.attachment_count || 0));
+                closeEmailModal();
+            } else {
+                alert('Error: ' + (data.error || 'Failed to send'));
                 btn.disabled = false;
-                
-            } catch (error) {
-                list.innerHTML = `<p style="text-align:center;color:#dc3545;">Error: ${error.message}</p>`;
+                btn.innerHTML = '<i class="fas fa-paper-plane"></i> Email Me This Property';
             }
+        } catch(err) {
+            alert('Network error – please try again.');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> Email Me This Property';
         }
-        
-        async function sendAllAttachments() {
-            if (!selectedProperty) return;
-            
-            const agentEmail = document.getElementById('recipientEmail').value.trim();
-            if (!agentEmail) {
-                showToast('Please enter agent email address in the top bar first', 'error');
-                return;
-            }
-            
-            const btn = document.getElementById('sendAllBtn');
-            btn.disabled = true;
-            btn.classList.add('sending');
-            btn.textContent = '⏳ Sending attachments...';
-            
-            try {
-                const response = await fetch('/api/forward-attachments', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        property_id: selectedProperty.id,
-                        agent_email: agentEmail
-                    })
-                });
-                
-                const result = await response.json();
-                
-                if (!response.ok) throw new Error(result.error || 'Failed to send');
-                
-                showToast(`✅ ${result.attachments_sent} attachments sent to ${agentEmail}`, 'success');
-                document.getElementById('attachModal').style.display = 'none';
-                
-            } catch (error) {
-                showToast(`❌ Error: ${error.message}`, 'error');
-            } finally {
-                btn.disabled = false;
-                btn.classList.remove('sending');
-                btn.textContent = '📧 Email All Attachments to Agent';
-            }
-        }
-        
-        // ====== EMAIL FORWARD MODAL ======
-        async function openEmailModal(propertyId) {
-            selectedProperty = allProperties.find(p => p.id == propertyId);
-            if (!selectedProperty) return;
-            
-            document.getElementById('emailModal').style.display = 'block';
-            document.getElementById('emailSelect').innerHTML = '<option value="">Loading emails...</option>';
-            document.getElementById('forwardBtn').disabled = true;
-            
-            try {
-                const response = await fetch(`/api/properties/${propertyId}/emails`);
-                if (!response.ok) throw new Error('Failed to load emails');
-                const data = await response.json();
-                
-                const emails = data.emails || [];
-                
-                if (emails.length === 0) {
-                    document.getElementById('emailSelect').innerHTML = '<option value="">No emails available</option>';
-                    return;
-                }
-                
-                document.getElementById('emailSelect').innerHTML = emails.map(email => {
-                    let dateStr = 'No date';
-                    if (email.email_date) {
-                        const date = new Date(email.email_date);
-                        dateStr = date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
-                    }
-                    const subject = email.email_subject || 'No subject';
-                    const truncated = subject.length > 40 ? subject.substring(0, 40) + '...' : subject;
-                    const attNote = email.has_attachments ? ` 📎${email.attachment_count}` : '';
-                    
-                    return `<option value="${email.id}">${dateStr} - ${truncated}${attNote}</option>`;
-                }).join('');
-                
-            } catch (error) {
-                document.getElementById('emailSelect').innerHTML = `<option value="">Error: ${error.message}</option>`;
-            }
-        }
-        
-        async function forwardEmail() {
-            const emailId = document.getElementById('emailSelect').value;
-            const recipientEmail = document.getElementById('recipientEmail').value.trim();
-            
-            if (!emailId || !selectedProperty || !recipientEmail) {
-                showToast('Please enter your email and select an email to forward', 'error');
-                return;
-            }
-            
-            const btn = document.getElementById('forwardBtn');
-            btn.disabled = true;
-            btn.textContent = 'Forwarding...';
-            
-            try {
-                const response = await fetch('/api/email-property-by-email-id', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email_id: emailId,
-                        agent_email: recipientEmail,
-                        property_id: selectedProperty.id
-                    })
-                });
-                
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || 'Failed to forward email');
-                }
-                
-                showToast('✅ Email forwarded to ' + recipientEmail, 'success');
-                document.getElementById('emailModal').style.display = 'none';
-                
-            } catch (error) {
-                showToast('❌ ' + error.message, 'error');
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Forward Selected Email';
-            }
-        }
-        
-        function showToast(message, type) {
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 4000);
-        }
-    </script>
+    }
+
+    function closeEmailModal() { document.getElementById('emailModal').style.display = 'none'; }
+
+    document.getElementById('emailModal').addEventListener('click', function(e) {
+        if (e.target === this) closeEmailModal();
+    });
+
+    loadProperties();
+</script>
 </body>
 </html>
-

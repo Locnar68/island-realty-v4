@@ -844,7 +844,7 @@ def trigger_email_scan():
                 
                 # Store scan time in Redis
                 from datetime import datetime
-                scan_time = datetime.now().isoformat()
+                scan_time = datetime.now().isoformat() + "Z" + "Z"
                 r.setex('email_monitor:last_scan', 3600, scan_time)  # Expire after 1 hour
                 
                 # Store result

@@ -12,14 +12,8 @@ STATUS_TRIGGERS = {
         'new listing',
         'just listed'
     ],
-    'Price Reduction': [
-        'price reduction',
-        'price reduced',
-        'price drop',
-        'reduced price',
-        'price change',
-        'new list price'
-    ],
+    # 'Price Reduction' removed from STATUS_TRIGGERS intentionally.
+    # Price Reduction emails update price only; they never set a status.
     'Highest & Best': [
         'highest and best',
         'highest & best',

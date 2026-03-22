@@ -533,6 +533,7 @@ class EmailMonitorV4:
                     cursor.execute("""
                         UPDATE properties SET 
                             current_list_price = %s,
+                            original_list_price = NULL,
                             updated_at = NOW()
                         WHERE id = %s AND (current_list_price IS NULL OR current_list_price != %s)
                     """, (new_price, property_id, new_price))

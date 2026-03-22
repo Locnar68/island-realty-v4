@@ -589,7 +589,7 @@
                 const timeElement = document.getElementById('last-scan-time');
                 
                 if (data.last_scan) {
-                    const scanDate = new Date(data.last_scan);
+                    const scanDate = new Date(data.last_scan + (data.last_scan.endsWith("Z") ? "" : "Z"));
                     const now = new Date();
                     const diffMinutes = Math.floor((now - scanDate) / 60000);
                     
