@@ -78,7 +78,7 @@ def properties():
                        p.has_attachments, p.attachment_count, p.gmail_message_id,
                        p.financing_type, p.agent_access, p.seller_agent_compensation,
                        p.occupancy_status, p.hold_harmless_required,
-                       p.property_type, p.reo_status, p.highest_best_due_at, p.totm_since, p.primary_photo_url,
+                       p.property_type, p.reo_status, p.highest_best_due_at, p.totm_since, p.primary_photo_url, p.city, p.zip_code,
                        (SELECT COUNT(*) FROM attachments a WHERE a.property_id = p.id AND (a.mime_type = 'application/pdf' OR a.filename ILIKE '%%.pdf')) as total_attachments,
                        (SELECT COUNT(*) FROM attachments a WHERE a.property_id = p.id AND a.is_foil = TRUE AND (a.mime_type = 'application/pdf' OR a.filename ILIKE '%%.pdf')) as foil_count,
                        (SELECT a.id FROM attachments a WHERE a.property_id = p.id AND a.category = 'Hold Harmless' AND a.gmail_attachment_id IS NOT NULL AND (a.mime_type = 'application/pdf' OR a.filename ILIKE '%%.pdf') ORDER BY a.uploaded_at DESC LIMIT 1) as hh_attachment_id,
@@ -95,7 +95,7 @@ def properties():
                        p.has_attachments, p.attachment_count, p.gmail_message_id,
                        p.financing_type, p.agent_access, p.seller_agent_compensation,
                        p.occupancy_status, p.hold_harmless_required,
-                       p.property_type, p.reo_status, p.highest_best_due_at, p.totm_since, p.primary_photo_url,
+                       p.property_type, p.reo_status, p.highest_best_due_at, p.totm_since, p.primary_photo_url, p.city, p.zip_code,
                        (SELECT COUNT(*) FROM attachments a WHERE a.property_id = p.id AND (a.mime_type = 'application/pdf' OR a.filename ILIKE '%%.pdf')) as total_attachments,
                        (SELECT COUNT(*) FROM attachments a WHERE a.property_id = p.id AND a.is_foil = TRUE AND (a.mime_type = 'application/pdf' OR a.filename ILIKE '%%.pdf')) as foil_count,
                        (SELECT a.id FROM attachments a WHERE a.property_id = p.id AND a.category = 'Hold Harmless' AND a.gmail_attachment_id IS NOT NULL AND (a.mime_type = 'application/pdf' OR a.filename ILIKE '%%.pdf') ORDER BY a.uploaded_at DESC LIMIT 1) as hh_attachment_id,
@@ -137,7 +137,9 @@ def properties():
                 "foil_attachment_id": row['foil_attachment_id'],
                 "highest_best_due_at": row['highest_best_due_at'].isoformat() if row.get('highest_best_due_at') else None,
                 "totm_since": row['totm_since'].isoformat() if row.get('totm_since') else None,
-                "primary_photo_url": row.get('primary_photo_url') or None
+                "primary_photo_url": row.get('primary_photo_url') or None,
+                "city": row.get('city') or '',
+                "zip_code": row.get('zip_code') or ''
             })
         
         cur.close()

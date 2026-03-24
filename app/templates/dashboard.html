@@ -28,478 +28,290 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
+            background: var(--bg); color: var(--text); min-height: 100vh;
         }
 
-        /* ── Header ─────────────────────────────────────────── */
+        /* ── Header ── */
         .header {
             background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
             border-bottom: 3px solid var(--accent);
         }
-
         .header-inner {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px 24px;
-            gap: 16px;
+            max-width: 1400px; margin: 0 auto;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 24px; gap: 16px;
         }
-
         .logo-area img { height: 52px; width: auto; display: block; }
-
-        .logo-fallback {
-            display: none;
-            color: white;
-            font-size: 1.4rem;
-            font-weight: 700;
-        }
-
+        .logo-fallback { display: none; color: white; font-size: 1.4rem; font-weight: 700; }
         .header-right { display: flex; align-items: center; gap: 10px; }
-
         .agent-email-wrap {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 8px;
-            padding: 6px 12px;
+            display: flex; align-items: center; gap: 8px;
+            background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px; padding: 6px 12px;
         }
-
-        .agent-email-wrap label {
-            color: var(--accent-light);
-            font-size: 0.78rem;
-            font-weight: 600;
-            white-space: nowrap;
-        }
-
-        .agent-email-wrap input {
-            background: none;
-            border: none;
-            outline: none;
-            color: white;
-            font-size: 0.9rem;
-            width: 220px;
-        }
-
+        .agent-email-wrap label { color: var(--accent-light); font-size: 0.78rem; font-weight: 600; white-space: nowrap; }
+        .agent-email-wrap input { background: none; border: none; outline: none; color: white; font-size: 0.9rem; width: 220px; }
         .btn-admin {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            background: var(--accent);
-            color: var(--navy);
-            border: none;
-            border-radius: 8px;
-            padding: 8px 16px;
-            font-size: 0.88rem;
-            font-weight: 700;
-            cursor: pointer;
-            text-decoration: none;
-            transition: background 0.2s;
-            white-space: nowrap;
+            display: flex; align-items: center; gap: 6px;
+            background: var(--accent); color: var(--navy); border: none; border-radius: 8px;
+            padding: 8px 16px; font-size: 0.88rem; font-weight: 700; cursor: pointer;
+            text-decoration: none; transition: background 0.2s; white-space: nowrap;
         }
-
         .btn-admin:hover { background: var(--accent-light); }
 
-        /* ── Controls bar ────────────────────────────────────── */
+        /* ── Controls bar ── */
         .controls-bar {
-            background: var(--surface);
-            border-bottom: 1px solid var(--border);
-            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-            position: sticky;
-            top: 0;
-            z-index: 100;
+            background: var(--surface); border-bottom: 1px solid var(--border);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06); position: sticky; top: 0; z-index: 100;
         }
-
         .controls-inner {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 12px 24px;
-            display: flex;
-            gap: 12px;
-            align-items: center;
-            flex-wrap: wrap;
+            max-width: 1400px; margin: 0 auto; padding: 12px 24px;
+            display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
         }
-
         .search-wrap { position: relative; flex: 1; min-width: 200px; }
-
-        .search-wrap i {
-            position: absolute;
-            left: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--gray-light);
-        }
-
+        .search-wrap i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--gray-light); }
         #searchInput {
-            width: 100%;
-            padding: 9px 12px 9px 36px;
-            border: 1.5px solid var(--border);
-            border-radius: 8px;
-            font-size: 0.93rem;
-            outline: none;
-            background: var(--bg);
+            width: 100%; padding: 9px 12px 9px 36px;
+            border: 1.5px solid var(--border); border-radius: 8px;
+            font-size: 0.93rem; outline: none; background: var(--bg);
         }
-
         #searchInput:focus { border-color: var(--navy-light); background: white; }
-
         #sortSelect {
-            padding: 9px 12px;
-            border: 1.5px solid var(--border);
-            border-radius: 8px;
-            font-size: 0.88rem;
-            outline: none;
-            background: var(--bg);
-            color: var(--text);
-            cursor: pointer;
+            padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 8px;
+            font-size: 0.88rem; outline: none; background: var(--bg); color: var(--text); cursor: pointer;
         }
-
+        #sortSelect:focus { border-color: var(--navy-light); }
         .filters { display: flex; gap: 6px; flex-wrap: wrap; }
-
         .filter-btn {
-            padding: 7px 14px;
-            border: 1.5px solid var(--border);
-            background: var(--bg);
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 0.83rem;
-            font-weight: 600;
-            color: var(--gray);
-            transition: all 0.15s;
-            white-space: nowrap;
+            padding: 7px 14px; border: 1.5px solid var(--border); background: var(--bg);
+            border-radius: 20px; cursor: pointer; font-size: 0.83rem; font-weight: 600;
+            color: var(--gray); transition: all 0.15s; white-space: nowrap;
         }
-
         .filter-btn:hover { border-color: var(--navy-light); color: var(--navy-light); background: white; }
         .filter-btn.active { background: var(--navy); color: white; border-color: var(--navy); }
 
-        /* ── Stats ───────────────────────────────────────────── */
+        /* ── Stats ── */
         .stats-row {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 16px 24px 0;
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
+            max-width: 1400px; margin: 0 auto; padding: 16px 24px 0;
+            display: flex; gap: 12px; flex-wrap: wrap;
         }
-
         .stat-card {
-            background: var(--surface);
-            border-radius: 10px;
-            padding: 14px 20px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.07);
-            min-width: 130px;
-            flex: 1;
+            background: var(--surface); border-radius: 10px; padding: 14px 20px;
+            display: flex; align-items: center; gap: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.07); min-width: 130px; flex: 1;
         }
-
-        .stat-icon {
-            width: 38px; height: 38px;
-            border-radius: 10px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.1rem; flex-shrink: 0;
-        }
-
+        .stat-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
         .stat-icon.navy   { background: #dbeafe; color: var(--navy); }
         .stat-icon.green  { background: #dcfce7; color: var(--green); }
         .stat-icon.orange { background: #ffedd5; color: var(--orange); }
         .stat-icon.gold   { background: #fef9c3; color: #92400e; }
-
         .stat-number { font-size: 1.6rem; font-weight: 700; color: var(--navy); line-height: 1; }
         .stat-label  { font-size: 0.78rem; color: var(--gray-light); font-weight: 500; margin-top: 2px; }
 
-        /* ── Grid ────────────────────────────────────────────── */
-        .grid-wrap {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 16px 24px 40px;
-        }
-
+        /* ── Grid ── */
+        .grid-wrap { max-width: 1400px; margin: 0 auto; padding: 16px 24px 40px; }
         #properties-container {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 16px;
         }
-
         .property-card {
-            background: var(--surface);
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-            cursor: pointer;
-            transition: transform 0.15s, box-shadow 0.15s;
-            border: 1px solid var(--border);
+            background: var(--surface); border-radius: 10px; overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08); cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s; border: 1px solid var(--border);
         }
-
-        .property-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.12);
-        }
-
-        .card-image {
-            background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
-            height: 130px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            overflow: hidden;
-        }
-
+        .property-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); }
+        .card-image { display: none; }
         .card-image svg { width: 60px; opacity: 0.2; fill: white; }
-
         .card-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
-
         .card-badge-tl {
             position: absolute; top: 8px; left: 8px;
-            background: rgba(0,0,0,0.55);
-            backdrop-filter: blur(4px);
-            color: white;
-            padding: 3px 8px;
-            border-radius: 6px;
-            font-size: 0.72rem;
-            font-weight: 600;
+            background: rgba(0,0,0,0.55); backdrop-filter: blur(4px);
+            color: white; padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 600;
         }
-
         .card-badge-tr {
             position: absolute; top: 8px; right: 8px;
-            background: var(--accent);
-            color: var(--navy);
-            padding: 3px 8px;
-            border-radius: 6px;
-            font-size: 0.72rem;
-            font-weight: 700;
+            background: var(--accent); color: var(--navy);
+            padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;
         }
-
         .card-body { padding: 14px 16px; }
-
-        .status-badge {
-            display: inline-block;
-            padding: 3px 10px;
-            border-radius: 20px;
-            font-size: 0.76rem;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-
-        .s-active           { background: #dcfce7; color: #15803d; }
-        .s-price-reduction  { background: #fef9c3; color: #92400e; }
-        .s-highest-and-best { background: #fee2e2; color: #b91c1c; }
-        .s-pending          { background: #ede9fe; color: #6d28d9; }
-        .s-sold             { background: #f1f5f9; color: #475569; }
-        .s-t-o-t-m          { background: #ffedd5; color: #c2410c; }
-        .s-hold             { background: #f5f3ff; color: #7c3aed; }
-        .s-in-contract      { background: #dbeafe; color: #1d4ed8; }
-
-        .card-price   { font-size: 1.45rem; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
-        .card-address { font-size: 0.88rem; color: var(--gray); margin-bottom: 2px; line-height: 1.35; }
-        .card-mls     { font-size: 0.8rem; color: var(--gray-light); margin-bottom: 12px; }
-
-        .card-footer { display: flex; gap: 6px; flex-wrap: wrap; }
-
+        .status-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.76rem; font-weight: 700; margin-bottom: 8px; }
+        .s-active            { background: #dcfce7; color: #15803d; }
+        .s-price-reduction   { background: #fef9c3; color: #92400e; }
+        .s-highest-and-best  { background: #fee2e2; color: #b91c1c; }
+        .s-first-accepted    { background: #fee2e2; color: #b91c1c; }
+        .s-pending           { background: #ede9fe; color: #6d28d9; }
+        .s-sold              { background: #f1f5f9; color: #475569; }
+        .s-t-o-t-m           { background: #ffedd5; color: #c2410c; }
+        .s-hold              { background: #f5f3ff; color: #7c3aed; }
+        .s-in-contract       { background: #dbeafe; color: #1d4ed8; }
+        .s-auction-available { background: #fef3c7; color: #92400e; }
+        .card-price   { font-size: 1.3rem; font-weight: 700; color: var(--navy); margin-bottom: 2px; }
+        .card-address { font-size: 1.15rem; font-weight: 600; color: var(--text); margin-bottom: 0; line-height: 1.3; }
+        .card-town    { font-size: 1.15rem; font-weight: 700; color: var(--navy-mid); margin-bottom: 8px; line-height: 1.2; }
+        .card-mls     { display: none; }
+        .card-footer  { display: flex; gap: 6px; flex-wrap: wrap; }
         .btn-email {
-            flex: 1;
-            padding: 8px;
-            background: var(--navy);
-            color: white;
-            border: none;
-            border-radius: 7px;
-            font-size: 0.82rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.15s;
-            white-space: nowrap;
+            flex: 1; padding: 8px; background: var(--navy); color: white;
+            border: none; border-radius: 7px; font-size: 0.82rem; font-weight: 600;
+            cursor: pointer; transition: background 0.15s; white-space: nowrap;
         }
-
         .btn-email:hover { background: var(--navy-mid); }
-
         .btn-photos {
-            padding: 8px 11px;
-            background: var(--accent);
-            color: var(--navy);
-            border: none;
-            border-radius: 7px;
-            font-size: 0.82rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: background 0.15s;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            white-space: nowrap;
+            padding: 8px 11px; background: var(--accent); color: var(--navy);
+            border: none; border-radius: 7px; font-size: 0.82rem; font-weight: 700;
+            cursor: pointer; transition: background 0.15s; text-decoration: none;
+            display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
         }
-
         .btn-photos:hover { background: var(--accent-light); }
-
         .btn-foil {
-            padding: 8px 11px;
-            background: var(--foil-red);
-            color: white;
-            border: none;
-            border-radius: 7px;
-            font-size: 0.82rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: background 0.15s;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            white-space: nowrap;
+            padding: 8px 11px; background: var(--foil-red); color: white;
+            border: none; border-radius: 7px; font-size: 0.82rem; font-weight: 700;
+            cursor: pointer; transition: background 0.15s; text-decoration: none;
+            display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
         }
-
         .btn-foil:hover { background: #a50d26; }
 
-        /* ── Modal ───────────────────────────────────────────── */
+        /* ── Modal ── */
         .modal {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(15,45,74,0.6);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
+            display: none; position: fixed; inset: 0;
+            background: rgba(15,45,74,0.6); z-index: 1000;
+            align-items: center; justify-content: center; padding: 20px;
         }
-
         .modal-content {
-            background: var(--surface);
-            border-radius: 12px;
-            max-width: 680px;
-            width: 100%;
-            max-height: 88vh;
-            overflow-y: auto;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            background: var(--surface); border-radius: 12px; max-width: 680px; width: 100%;
+            max-height: 88vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
-
         .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 18px 24px;
-            border-bottom: 1px solid var(--border);
-            background: var(--navy);
-            border-radius: 12px 12px 0 0;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 18px 24px; border-bottom: 1px solid var(--border);
+            background: var(--navy); border-radius: 12px 12px 0 0;
         }
-
         .modal-header h2 { color: white; font-size: 1.1rem; }
-
         .modal-close {
-            background: rgba(255,255,255,0.15);
-            border: none;
-            color: white;
-            width: 30px; height: 30px;
-            border-radius: 50%;
-            font-size: 1.1rem;
-            cursor: pointer;
+            background: rgba(255,255,255,0.15); border: none; color: white;
+            width: 30px; height: 30px; border-radius: 50%; font-size: 1.1rem; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
         }
-
         .modal-close:hover { background: rgba(255,255,255,0.3); }
-
         .modal-body { padding: 20px 24px; }
-
         .form-group { margin-bottom: 16px; }
-
-        .form-group label {
-            display: block;
-            font-size: 0.83rem;
-            font-weight: 600;
-            color: var(--gray);
-            margin-bottom: 6px;
-        }
-
-        .form-group select {
-            width: 100%;
-            padding: 9px 12px;
-            border: 1.5px solid var(--border);
-            border-radius: 8px;
-            font-size: 0.9rem;
-            outline: none;
-        }
-
+        .form-group label { display: block; font-size: 0.83rem; font-weight: 600; color: var(--gray); margin-bottom: 6px; }
+        .form-group select { width: 100%; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.9rem; outline: none; }
         .form-group select:focus { border-color: var(--navy-light); }
-
-        .email-meta {
-            background: var(--bg);
-            border-radius: 8px;
-            padding: 14px;
-            font-size: 0.88rem;
-            line-height: 1.8;
-        }
-
+        .email-meta { background: var(--bg); border-radius: 8px; padding: 14px; font-size: 0.88rem; line-height: 1.8; }
         .email-meta strong { color: var(--navy); }
-
-        .attach-box {
-            background: #fef9c3;
-            border-left: 3px solid var(--accent);
-            border-radius: 6px;
-            padding: 10px 14px;
-            margin-top: 10px;
-            font-size: 0.85rem;
-        }
-
-        .modal-footer {
-            display: flex;
-            gap: 10px;
-            padding: 16px 24px;
-            border-top: 1px solid var(--border);
-        }
-
-        .btn-send {
-            flex: 1;
-            padding: 11px;
-            background: var(--navy);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 0.95rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: background 0.15s;
-        }
-
+        .attach-box { background: #fef9c3; border-left: 3px solid var(--accent); border-radius: 6px; padding: 10px 14px; margin-top: 10px; font-size: 0.85rem; }
+        .modal-footer { display: flex; gap: 10px; padding: 16px 24px; border-top: 1px solid var(--border); }
+        .btn-send { flex: 1; padding: 11px; background: var(--navy); color: white; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: background 0.15s; }
         .btn-send:hover { background: var(--navy-mid); }
-
-        .btn-cancel {
-            padding: 11px 20px;
-            background: var(--bg);
-            color: var(--gray);
-            border: 1.5px solid var(--border);
-            border-radius: 8px;
-            font-size: 0.95rem;
-            font-weight: 600;
-            cursor: pointer;
-        }
-
+        .btn-cancel { padding: 11px 20px; background: var(--bg); color: var(--gray); border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; }
         .btn-cancel:hover { background: var(--border); }
-
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: var(--gray-light);
-            grid-column: 1/-1;
-        }
-
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--gray-light); grid-column: 1/-1; }
         .empty-state i { font-size: 3rem; margin-bottom: 16px; display: block; }
 
         @media (max-width: 700px) {
-            .header-inner { flex-wrap: wrap; gap: 10px; }
-            .agent-email-wrap input { width: 160px; }
+            /* Remove blue image banner on mobile */
+            .card-image { display: none; }
+
+            /* Compact 2-column grid — 6 cards visible at once */
+            #properties-container {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 8px;
+            }
+
+            /* Tight card body */
+            .card-body { padding: 8px 9px; }
+
+            /* Status badge */
+            .status-badge { font-size: 0.65rem; padding: 2px 7px; margin-bottom: 5px; }
+
+            /* Price */
+            .card-price { font-size: 1.05rem; margin-bottom: 2px; }
+
+            /* Street line */
+            .card-address { font-size: 0.72rem; color: var(--gray); margin-bottom: 0; }
+
+            /* Town — bold and prominent */
+            .card-town { font-size: 1.0rem; font-weight: 800; color: var(--navy); margin-bottom: 6px; line-height: 1.1; }
+
+            /* MLS hidden */
+            .card-mls { display: none; }
+
+            /* Buttons */
+            .card-footer { gap: 4px; }
+            .btn-email  { padding: 6px 4px; font-size: 0.7rem; }
+            .btn-photos { padding: 6px 7px; font-size: 0.7rem; }
+            .btn-foil   { padding: 6px 7px; font-size: 0.7rem; }
+
+            /* Header / controls */
+            .header-inner { flex-wrap: wrap; gap: 8px; }
+            .agent-email-wrap input { width: 140px; }
             .controls-inner { flex-direction: column; align-items: stretch; }
             #sortSelect { width: 100%; }
+
+            /* Stats row */
+            .stats-row { padding: 10px 12px 0; gap: 8px; }
+            .stat-card  { padding: 10px 12px; min-width: 80px; }
+            .stat-number { font-size: 1.2rem; }
+
+            /* Grid wrapper */
+            .grid-wrap { padding: 10px 10px 30px; }
         }
+
+        @media (max-width: 430px) {
+            .card-body  { padding: 7px 8px; }
+            .card-price { font-size: 0.95rem; }
+            .card-town  { font-size: 0.9rem; }
+        }
+
+        /* ── FOIL forward modal ── */
+        .foil-modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(15,45,74,0.65); z-index: 2000;
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        .foil-modal-overlay.open { display: flex; }
+        .foil-modal-box {
+            background: var(--surface); border-radius: 12px; width: 100%;
+            max-width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); overflow: hidden;
+        }
+        .foil-modal-header {
+            background: var(--foil-red); padding: 16px 20px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .foil-modal-header h3 { color: white; font-size: 1rem; margin: 0; }
+        .foil-modal-close {
+            background: rgba(255,255,255,0.2); border: none; color: white;
+            width: 28px; height: 28px; border-radius: 50%; font-size: 1rem;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .foil-modal-body { padding: 20px; }
+        .foil-modal-body p { font-size: 0.9rem; color: var(--gray); margin-bottom: 12px; }
+        .foil-modal-body input[type=email] {
+            width: 100%; padding: 10px 12px; border: 1.5px solid var(--border);
+            border-radius: 8px; font-size: 0.95rem; outline: none; margin-bottom: 4px;
+        }
+        .foil-modal-body input[type=email]:focus { border-color: var(--foil-red); }
+        .foil-modal-footer { display: flex; gap: 10px; padding: 12px 20px 20px; }
+        .btn-foil-send {
+            flex: 1; padding: 11px; background: var(--foil-red); color: white;
+            border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 700;
+            cursor: pointer; transition: background 0.15s;
+        }
+        .btn-foil-send:hover { background: #a50d26; }
+        .btn-foil-send:disabled { background: var(--gray-light); cursor: not-allowed; }
+        .btn-foil-cancel-sm {
+            padding: 11px 18px; background: var(--bg); color: var(--gray);
+            border: 1.5px solid var(--border); border-radius: 8px;
+            font-size: 0.95rem; font-weight: 600; cursor: pointer;
+        }
+        #foilStatusMsg { font-size: 0.85rem; min-height: 20px; color: var(--green); margin-top: 6px; }
+        #foilStatusMsg.error { color: var(--red); }
     </style>
 </head>
 <body>
 
-<!-- ── Header ─────────────────────────────────────────────── -->
 <div class="header">
     <div class="header-inner">
         <div class="logo-area">
@@ -510,7 +322,7 @@
         <div class="header-right">
             <div class="agent-email-wrap">
                 <label><i class="fas fa-user"></i> Agent:</label>
-                <input type="email" id="agentEmail" placeholder="agent@islandadvantage.com" value="todd@islandadvantage.com">
+                <input type="email" id="agentEmail" placeholder="agent@islandadvantage.com" value="">
             </div>
             <a href="#" class="btn-admin" onclick="checkAdminPassword(event)">
                 <i class="fas fa-cog"></i> Admin
@@ -519,7 +331,6 @@
     </div>
 </div>
 
-<!-- ── Controls ───────────────────────────────────────────── -->
 <div class="controls-bar">
     <div class="controls-inner">
         <div class="search-wrap">
@@ -529,36 +340,37 @@
         <select id="sortSelect">
             <option value="most-recent">Most Recent</option>
             <option value="oldest">Oldest</option>
-            <option value="price-reduction-recent">Recent Price Reduction</option>
-            <option value="price-reduction-oldest">Oldest Price Reduction</option>
+            <option value="price-high">Price: High → Low</option>
+            <option value="price-low">Price: Low → High</option>
+            <option value="price-reduction">Price Reductions First</option>
         </select>
         <div class="filters">
             <button class="filter-btn active" onclick="doFilter('all', event)">All</button>
-            <button class="filter-btn" onclick="doFilter('active', event)">Active</button>
-            <button class="filter-btn" onclick="doFilter('price-reduction', event)">Price Reduced</button>
-            <button class="filter-btn" onclick="doFilter('highest-best', event)">H&amp;B</button>
-            <button class="filter-btn" onclick="doFilter('pending', event)">Pending</button>
-            <button class="filter-btn" onclick="doFilter('in-contract', event)">In Contract</button>
-            <button class="filter-btn" onclick="doFilter('sold', event)">Sold</button>
-            <button class="filter-btn" onclick="doFilter('t-o-t-m', event)">T-O-T-M</button>
-            <button class="filter-btn" onclick="doFilter('hold', event)">Hold</button>
+            <button class="filter-btn" onclick="doFilter('Active', event)">Active</button>
+            <button class="filter-btn" onclick="doFilter('Price Reduction', event)">Price Reduced</button>
+            <button class="filter-btn" onclick="doFilter('Highest & Best', event)">H&amp;B</button>
+
+
+
+
+
+            <button class="filter-btn" onclick="doFilter('FOIL', event)" style="background:#c8102e;color:white;border-color:#c8102e;font-weight:700;"><i class="fas fa-file-alt"></i> FOIL</button>
         </div>
     </div>
 </div>
 
-<!-- ── Stats ──────────────────────────────────────────────── -->
 <div class="stats-row">
     <div class="stat-card">
         <div class="stat-icon navy"><i class="fas fa-building"></i></div>
-        <div><div class="stat-number" id="totalCount">–</div><div class="stat-label">Total</div></div>
+        <div><div class="stat-number" id="totalCount">–</div><div class="stat-label">Showing</div></div>
     </div>
     <div class="stat-card">
         <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
         <div><div class="stat-number" id="activeCount">–</div><div class="stat-label">Active</div></div>
     </div>
     <div class="stat-card">
-        <div class="stat-icon orange"><i class="fas fa-envelope"></i></div>
-        <div><div class="stat-number" id="withEmailCount">–</div><div class="stat-label">With Email</div></div>
+        <div class="stat-icon orange"><i class="fas fa-paperclip"></i></div>
+        <div><div class="stat-number" id="withAttachCount">–</div><div class="stat-label">With Attachments</div></div>
     </div>
     <div class="stat-card">
         <div class="stat-icon gold"><i class="fas fa-tag"></i></div>
@@ -566,14 +378,12 @@
     </div>
 </div>
 
-<!-- ── Property Grid ──────────────────────────────────────── -->
 <div class="grid-wrap">
     <div id="properties-container">
         <div class="empty-state"><i class="fas fa-spinner fa-spin"></i>Loading properties…</div>
     </div>
 </div>
 
-<!-- ── Email Modal ────────────────────────────────────────── -->
 <div class="modal" id="emailModal">
     <div class="modal-content" id="emailModalContent">
         <div style="padding:40px;text-align:center;color:var(--gray-light);">
@@ -591,37 +401,55 @@
         else if (pw !== null) { alert('Incorrect password.'); }
     }
 
-    let allProperties = [], currentFilter = 'all', currentSort = 'most-recent';
-    let currentPropertyId = null, propertyEmails = [];
+    // ── State ──────────────────────────────────────────────────
+    let allProperties = [];   // full unfiltered list from API (loaded once)
+    let currentFilter = 'all';
+    let currentSort   = 'most-recent';
+    let currentPropertyId = null;
+    let propertyEmails = [];
 
+    // ── Init ───────────────────────────────────────────────────
     const savedEmail = localStorage.getItem('agentEmail');
     if (savedEmail) document.getElementById('agentEmail').value = savedEmail;
     document.getElementById('agentEmail').addEventListener('change', function() {
         localStorage.setItem('agentEmail', this.value);
     });
+
+    // Search → re-render (no API call)
     document.getElementById('searchInput').addEventListener('input', renderProperties);
+
+    // Sort → re-render (no API call)
     document.getElementById('sortSelect').addEventListener('change', function() {
         currentSort = this.value;
-        localStorage.setItem('sortPref_' + currentFilter, currentSort);
-        loadProperties();
+        renderProperties();
     });
 
-    async function loadProperties() {
+    // ── Load all properties ONCE ───────────────────────────────
+    // ── Address parser: "123 Main St Brooklyn" → {street, town} ──────────────
+    function splitAddr(full) {
+        if (!full) return { street: '—', town: '' };
+        // Comma format: "299 South River Road, Calverton, NY 11933"
+        const parts = full.split(',').map(s => s.trim());
+        if (parts.length >= 2) {
+            const town = parts[1].replace(/\s+NY\s*\d*\s*$/i, '').trim();
+            return { street: parts[0], town };
+        }
+        // No comma: split after last street-type keyword
+        const rx = /\b(Street|Avenue|Road|Drive|Boulevard|Place|Court|Lane|Way|Blvd|Ave|St|Rd|Ln|Dr|Ct|Pl|Ter|Terrace|Pkwy|Parkway|Hwy|Highway)(\s+(?:Apt|Unit|#)\s*\S+)?\b/gi;
+        let lastIdx = -1, m;
+        while ((m = rx.exec(full)) !== null) { lastIdx = m.index + m[0].length; }
+        if (lastIdx > 0) {
+            return { street: full.substring(0, lastIdx).trim(), town: full.substring(lastIdx).trim() };
+        }
+        return { street: full, town: '' };
+    }
+
+        async function loadProperties() {
         document.getElementById('properties-container').innerHTML =
             '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Loading…</div>';
         try {
-            const statusMap = {
-                'active':'Active', 'price-reduction':'Price Reduction',
-                'highest-best':'Highest & Best', 'pending':'Pending',
-                'in-contract':'In Contract', 'sold':'Sold',
-                't-o-t-m':'T-O-T-M', 'hold':'Hold'
-            };
-            let url = '/api/properties?sort=' + currentSort;
-            if (currentFilter !== 'all')
-                url += '&status=' + encodeURIComponent(statusMap[currentFilter]);
-            const data = await fetch(url).then(r => r.json());
+            const data = await fetch('/api/properties').then(r => r.json());
             allProperties = data.properties || [];
-            updateStats();
             renderProperties();
         } catch(err) {
             document.getElementById('properties-container').innerHTML =
@@ -629,54 +457,110 @@
         }
     }
 
-    function updateStats() {
-        document.getElementById('totalCount').textContent = allProperties.length;
+    // ── Filter button click → re-render (no API call) ──────────
+    function doFilter(filter, event) {
+        currentFilter = filter;
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        if (event && event.target) event.target.classList.add('active');
+        renderProperties();
+    }
+
+    // ── Client-side filter + sort + render ─────────────────────
+    function renderProperties() {
+        const term = document.getElementById('searchInput').value.toLowerCase().trim();
+
+        // 1. Filter by status or FOIL
+        let list = allProperties;
+        if (currentFilter === 'FOIL') {
+            list = list.filter(p => (p.foil_count || 0) > 0);
+        } else if (currentFilter !== 'all') {
+            list = list.filter(p => p.current_status === currentFilter);
+        }
+
+        // 2. Filter by search term
+        if (term) {
+            list = list.filter(p =>
+                (p.address||'').toLowerCase().includes(term) ||
+                (p.mls_number||'').toLowerCase().includes(term) ||
+                (p.current_status||'').toLowerCase().includes(term)
+            );
+        }
+
+        // 3. Sort
+        list = [...list]; // copy before sort
+        switch (currentSort) {
+            case 'oldest':
+                list.sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at));
+                break;
+            case 'price-high':
+                list.sort((a, b) => (b.current_list_price||0) - (a.current_list_price||0));
+                break;
+            case 'price-low':
+                list.sort((a, b) => (a.current_list_price||0) - (b.current_list_price||0));
+                break;
+            case 'price-reduction':
+                list.sort((a, b) => {
+                    const aP = a.current_status === 'Price Reduction' ? 0 : 1;
+                    const bP = b.current_status === 'Price Reduction' ? 0 : 1;
+                    return aP - bP || new Date(b.updated_at) - new Date(a.updated_at);
+                });
+                break;
+            default: // most-recent — API already returns this order
+                list.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+        }
+
+        // 4. Update stats
+        document.getElementById('totalCount').textContent = list.length;
         document.getElementById('activeCount').textContent =
             allProperties.filter(p => p.current_status === 'Active').length;
-        document.getElementById('withEmailCount').textContent =
+        document.getElementById('withAttachCount').textContent =
             allProperties.filter(p => p.has_attachments).length;
         document.getElementById('priceRedCount').textContent =
             allProperties.filter(p => p.current_status === 'Price Reduction').length;
-    }
 
-    function renderProperties() {
-        const term = document.getElementById('searchInput').value.toLowerCase();
-        let list = allProperties;
-        if (term) list = list.filter(p =>
-            (p.address||'').toLowerCase().includes(term) ||
-            (p.mls_number||'').toLowerCase().includes(term) ||
-            (p.current_status||'').toLowerCase().includes(term)
-        );
+        // 5a. Deduplicate by MLS, then by normalized address
+        const seenMls  = new Set();
+        const seenAddr = new Set();
+        list = list.filter(p => {
+            const mls = (p.mls_number || '').trim();
+            if (mls && mls !== 'N/A' && mls !== '') {
+                if (seenMls.has(mls)) return false;
+                seenMls.add(mls); return true;
+            }
+            const ak = (p.address || '').toLowerCase().replace(/[^a-z0-9]/g,'').substring(0,20);
+            if (ak && seenAddr.has(ak)) return false;
+            if (ak) seenAddr.add(ak);
+            return true;
+        });
 
+        // 5. Render cards
         const container = document.getElementById('properties-container');
         if (!list.length) {
             container.innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><br>No properties found</div>';
             return;
         }
 
-        const sc = s => (s||'active').toLowerCase().replace(/\s+/g,'-').replace(/&/g,'and').replace(/[^a-z0-9-]/g,'');
+        const sc = s => (s||'active').toLowerCase()
+            .replace(/\s+/g,'-').replace(/&/g,'and').replace(/[^a-z0-9-]/g,'');
 
         container.innerHTML = list.map(p => {
-            const price = (p.current_list_price || p.price) ? '$' + Number(p.current_list_price || p.price).toLocaleString() : 'Price N/A';
+            const price = p.current_list_price
+                ? '$' + Number(p.current_list_price).toLocaleString()
+                : 'Price N/A';
 
-            // Image area — use primary_photo_url if available
             const imgArea = p.primary_photo_url
-                ? `<img src="${p.primary_photo_url}" class="card-photo"
-                       onerror="this.style.display='none'">`
-                : `<svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>`;
+                ? `<img src="${p.primary_photo_url}" class="card-photo" onerror="this.style.display='none'">`
+                : '';
 
-            // Action buttons
             const photosBtn = p.primary_photo_url
-                ? `<a href="${p.primary_photo_url}" target="_blank" class="btn-photos"
-                      onclick="event.stopPropagation()">
+                ? `<a href="${p.primary_photo_url}" target="_blank" class="btn-photos" onclick="event.stopPropagation()">
                      <i class="fas fa-camera"></i> Photos
                    </a>` : '';
 
-            const foilBtn = p.foil_attachment_id
-                ? `<a href="/api/attachments/${p.foil_attachment_id}/view" target="_blank" class="btn-foil"
-                      onclick="event.stopPropagation()">
-                     <i class="fas fa-file-alt"></i> FOIL
-                   </a>` : '';
+            const foilBtn = p.foil_count > 0
+                ? `<button class="btn-foil" onclick="event.stopPropagation(); openFoilModal(${p.id}, '${(p.address||'').replace(/'/g,'\\'+'\'')}', ${p.foil_count})">
+                     <i class="fas fa-file-alt"></i> FOIL (${p.foil_count})
+                   </button>` : '';
 
             return `
             <div class="property-card" onclick="showEmailModal(${p.id})">
@@ -688,8 +572,9 @@
                 <div class="card-body">
                     <span class="status-badge s-${sc(p.current_status)}">${p.current_status || 'Active'}</span>
                     <div class="card-price">${price}</div>
-                    <div class="card-address">${p.address || '—'}</div>
-                    <div class="card-mls">MLS ${p.mls_number || 'N/A'}</div>
+                    <div class="card-address">${p.address || '&mdash;'}</div>
+                    ${p.city ? `<div class="card-town">${p.city}</div>` : ""}
+
                     <div class="card-footer">
                         <button class="btn-email" onclick="event.stopPropagation(); showEmailModal(${p.id})">
                             <i class="fas fa-paper-plane"></i> Email Me
@@ -702,18 +587,10 @@
         }).join('');
     }
 
-    function doFilter(filter, event) {
-        currentFilter = filter;
-        const saved = localStorage.getItem('sortPref_' + filter);
-        if (saved) { currentSort = saved; document.getElementById('sortSelect').value = saved; }
-        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        if (event && event.target) event.target.classList.add('active');
-        loadProperties();
-    }
-
+    // ── Email modal ────────────────────────────────────────────
     async function showEmailModal(propertyId) {
         currentPropertyId = propertyId;
-        const modal = document.getElementById('emailModal');
+        const modal   = document.getElementById('emailModal');
         const content = document.getElementById('emailModalContent');
         content.innerHTML = '<div style="padding:40px;text-align:center;color:var(--gray-light);"><i class="fas fa-spinner fa-spin" style="font-size:2rem;"></i></div>';
         modal.style.display = 'flex';
@@ -809,11 +686,7 @@
             const data = await fetch('/api/email-property-by-email-id', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    property_id: currentPropertyId,
-                    email_id: emailId,
-                    agent_email: agentEmail
-                })
+                body: JSON.stringify({ property_id: currentPropertyId, email_id: emailId, agent_email: agentEmail })
             }).then(r => r.json());
             if (data.success) {
                 alert('✓ Sent to ' + agentEmail + '\n\n' + email.email_subject + '\nAttachments: ' + (email.attachment_count || 0));
@@ -838,5 +711,96 @@
 
     loadProperties();
 </script>
+
+<!-- ── FOIL Forward Modal ── -->
+<div class="foil-modal-overlay" id="foilModal">
+  <div class="foil-modal-box">
+    <div class="foil-modal-header">
+      <h3><i class="fas fa-file-alt"></i> Forward FOIL Document(s)</h3>
+      <button class="foil-modal-close" onclick="closeFoilModal()">&#x2715;</button>
+    </div>
+    <div class="foil-modal-body">
+      <p id="foilModalDesc">Forward FOIL document(s) for this property to your email.</p>
+      <input type="email" id="foilEmailInput" placeholder="Enter email address">
+      <div id="foilStatusMsg"></div>
+    </div>
+    <div class="foil-modal-footer">
+      <button class="btn-foil-cancel-sm" onclick="closeFoilModal()">Cancel</button>
+      <button class="btn-foil-send" id="foilSendBtn" onclick="sendFoil()">
+        <i class="fas fa-paper-plane"></i> Send FOIL
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+    let foilPropertyId = null;
+
+    function openFoilModal(propertyId, address, count) {
+        foilPropertyId = propertyId;
+        const savedEmail = localStorage.getItem('agentEmail') || document.getElementById('agentEmail').value || '';
+        document.getElementById('foilEmailInput').value = savedEmail;
+        document.getElementById('foilModalDesc').textContent =
+            'Forward ' + count + ' FOIL document' + (count > 1 ? 's' : '') + ' for: ' + address;
+        document.getElementById('foilStatusMsg').textContent = '';
+        document.getElementById('foilStatusMsg').className = '';
+        document.getElementById('foilSendBtn').disabled = false;
+        document.getElementById('foilSendBtn').innerHTML = '<i class="fas fa-paper-plane"></i> Send FOIL';
+        document.getElementById('foilModal').classList.add('open');
+    }
+
+    function closeFoilModal() {
+        document.getElementById('foilModal').classList.remove('open');
+        foilPropertyId = null;
+    }
+
+    async function sendFoil() {
+        const email = document.getElementById('foilEmailInput').value.trim();
+        const statusEl = document.getElementById('foilStatusMsg');
+        const btn = document.getElementById('foilSendBtn');
+
+        if (!email || !email.includes('@')) {
+            statusEl.textContent = 'Please enter a valid email address.';
+            statusEl.className = 'error';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending…';
+        statusEl.textContent = '';
+
+        try {
+            const resp = await fetch('/api/property/' + foilPropertyId + '/forward-foil', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ agent_email: email })
+            });
+            const data = await resp.json();
+            if (data.success) {
+                statusEl.textContent = '✓ Sent ' + data.attachments_sent + ' FOIL doc' +
+                    (data.attachments_sent > 1 ? 's' : '') + ' to ' + email;
+                statusEl.className = '';
+                btn.innerHTML = '<i class="fas fa-check"></i> Sent!';
+                setTimeout(closeFoilModal, 2000);
+            } else {
+                statusEl.textContent = 'Error: ' + (data.error || 'Unknown error');
+                statusEl.className = 'error';
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send FOIL';
+            }
+        } catch (err) {
+            statusEl.textContent = 'Network error. Please try again.';
+            statusEl.className = 'error';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send FOIL';
+        }
+    }
+
+    // Close on overlay click
+    document.getElementById('foilModal').addEventListener('click', function(e) {
+        if (e.target === this) closeFoilModal();
+    });
+</script>
+
 </body>
 </html>
