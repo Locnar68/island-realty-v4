@@ -444,6 +444,26 @@
         return { street: full, town: '' };
     }
 
+    // Strip city from end of address string to avoid duplicate display
+    function stripCity(addr, city) {
+        if (!addr || !city) return addr || '';
+        var a = addr.trim();
+        var c = city.trim();
+        // Comma format: "123 Main St, Springfield Gardens" -> "123 Main St"
+        var commaIdx = a.lastIndexOf(',');
+        if (commaIdx >= 0) {
+            var afterComma = a.substring(commaIdx + 1).trim().replace(/\s*NY\s*\d{0,5}\s*$/i, '').trim();
+            if (afterComma.toLowerCase() === c.toLowerCase()) {
+                return a.substring(0, commaIdx).trim();
+            }
+        }
+        // Space format: "123 Main St Springfield Gardens" -> "123 Main St"
+        if (a.toLowerCase().endsWith(c.toLowerCase())) {
+            return a.substring(0, a.length - c.length).replace(/[,\s]+$/, '').trim();
+        }
+        return a;
+    }
+
         async function loadProperties() {
         document.getElementById('properties-container').innerHTML =
             '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Loading…</div>';
@@ -572,7 +592,7 @@
                 <div class="card-body">
                     <span class="status-badge s-${sc(p.current_status)}">${p.current_status || 'Active'}</span>
                     <div class="card-price">${price}</div>
-                    <div class="card-address">${p.address || '&mdash;'}</div>
+                    <div class="card-address">${stripCity(p.address, p.city) || '&mdash;'}</div>
                     ${p.city ? `<div class="card-town">${p.city}</div>` : ""}
 
                     <div class="card-footer">
