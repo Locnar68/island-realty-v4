@@ -359,6 +359,101 @@ def forward_all_attachments():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/property/<int:property_id>/forward-foil', methods=['POST'])
+def forward_foil_documents(property_id):
+    """Forward only FOIL attachments for a property to an agent email."""
+    try:
+        data = request.json
+        agent_email = data.get('agent_email')
+
+        if not agent_email:
+            return jsonify({"error": "agent_email is required"}), 400
+
+        conn = get_db()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        cur.execute("SELECT mls_number, address FROM properties WHERE id = %s", (property_id,))
+        prop = cur.fetchone()
+        if not prop:
+            cur.close(); conn.close()
+            return jsonify({"error": "Property not found"}), 404
+
+        cur.execute("""
+            SELECT DISTINCT a.gmail_attachment_id, a.gmail_message_id, a.filename,
+                   a.mime_type, a.category
+            FROM attachments a
+            WHERE a.property_id = %s
+              AND a.is_foil = TRUE
+              AND a.gmail_attachment_id IS NOT NULL
+              AND a.gmail_message_id IS NOT NULL
+            ORDER BY a.filename
+        """, (property_id,))
+
+        foil_attachments = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        if not foil_attachments:
+            return jsonify({"error": "No FOIL documents found for this property"}), 404
+
+        service = get_gmail_service()
+
+        forward = MIMEMultipart()
+        forward['to'] = agent_email
+        forward['subject'] = f"FOIL Document(s): {prop['address']} (MLS: {prop['mls_number'] or 'N/A'})"
+
+        body = "\n".join([
+            f"FOIL Document(s) for: {prop['address']}",
+            f"MLS: {prop['mls_number'] or 'N/A'}",
+            f"Total FOIL files: {len(foil_attachments)}",
+            "",
+            "Files attached:",
+            *[f"  • {a['filename']}" for a in foil_attachments],
+            "",
+            "---",
+            "Sent from Island Advantage Property Management System"
+        ])
+        forward.attach(MIMEText(body, 'plain'))
+
+        attached_count = 0
+        errors = []
+
+        for att in foil_attachments:
+            try:
+                gmail_att = service.users().messages().attachments().get(
+                    userId='me',
+                    messageId=att['gmail_message_id'],
+                    id=att['gmail_attachment_id']
+                ).execute()
+                file_data = base64.urlsafe_b64decode(gmail_att['data'])
+                part = MIMEBase('application', 'octet-stream')
+                part.set_payload(file_data)
+                encoders.encode_base64(part)
+                part.add_header('Content-Disposition', f'attachment; filename="{att["filename"]}"')
+                forward.attach(part)
+                attached_count += 1
+            except Exception as e:
+                errors.append(f"Failed {att['filename']}: {str(e)}")
+
+        if attached_count == 0:
+            return jsonify({"error": "Could not retrieve FOIL documents from Gmail", "details": errors}), 500
+
+        raw_message = base64.urlsafe_b64encode(forward.as_bytes()).decode()
+        sent = service.users().messages().send(userId='me', body={'raw': raw_message}).execute()
+
+        return jsonify({
+            "success": True,
+            "message_id": sent['id'],
+            "property": prop['address'],
+            "forwarded_to": agent_email,
+            "attachments_sent": attached_count,
+            "errors": errors if errors else None
+        })
+
+    except Exception as e:
+        import traceback
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+
 @app.route('/api/forward', methods=['POST'])
 def forward_email():
     """Forward property email with all attachments (legacy endpoint)"""
@@ -1301,6 +1396,9 @@ def upload_spreadsheet():
                 if sp.get('address_2'):
                     update_parts.append("address_2 = %s")
                     update_vals.append(sp['address_2'])
+                if sp.get('city'):
+                    update_parts.append("city = %s")
+                    update_vals.append(sp['city'])
                 if sp['status']:
                     update_parts.append("current_status = %s")
                     update_vals.append(sp['status'])
