@@ -125,7 +125,7 @@ def parse_act_pdf(pdf_path):
                         property_data = {
                             'reo_status': reo_status.strip() if reo_status else None,
                             'manager': None,  # Not in this PDF format
-                            'financing': financing.strip() if financing else None,
+                            'financing': None,  # Not in this PDF format
                             'prop_style': prop_style.strip() if prop_style else None,
                             'address': full_address.strip(),
                             'address_normalized': normalize_address(full_address),
