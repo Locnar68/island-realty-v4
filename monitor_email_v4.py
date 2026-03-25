@@ -63,7 +63,9 @@ def _normalize_status(s):
     if not s:
         return s
     sl = s.lower().strip()
-    if sl in ('pending', 'under contract', 'pended', 'in contract'):
+    if sl in ('pending', 'under contract', 'pended', 'in contract',
+              '1/2 signed', '1/2 signed contract', 'half signed',
+              '½ signed', '½ signed contract'):
         return 'In Contract'
     if sl in ('available', 'lpp', 'auction/available', 'auction available'):
         return 'Auction Available'

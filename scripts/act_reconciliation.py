@@ -65,6 +65,28 @@ def extract_street_number(address):
     return match.group(1) if match else None
 
 
+def normalize_reo_status(s):
+    """Normalize REO status strings to canonical form"""
+    if not s:
+        return s
+    sl = s.lower().strip()
+    if sl in ('pending', 'under contract', 'pended', 'in contract',
+              '1/2 signed', '1/2 signed contract', 'half signed',
+              '½ signed', '½ signed contract'):
+        return 'In Contract'
+    if sl in ('available', 'lpp', 'auction/available', 'auction available'):
+        return 'Auction Available'
+    if sl in ('1st accept', '1st accepted', 'first accepted', 'first accept'):
+        return 'First Accepted'
+    if sl in ('t-o-t-m', 'temporarily off the market', 'totm'):
+        return 'TOTM'
+    if sl in ('highest and best', 'highest & best'):
+        return 'Highest & Best'
+    if sl in ('price reduced', 'price reduction', 'reduced'):
+        return None
+    return s
+
+
 def parse_act_pdf(pdf_path):
     """
     Parse ACT spreadsheet PDF and extract property data
@@ -82,28 +104,28 @@ def parse_act_pdf(pdf_path):
             for table in tables:
                 # Skip header row
                 for row in table[1:]:
-                    if not row or len(row) < 7:
+                    if not row or len(row) < 6:  # Flexible: some PDFs have 7-8+ cols
                         continue
                     
                     try:
-                        # FIXED COLUMN MAPPING based on actual PDF structure:
-                        # Col 1: REO Status
-                        # Col 2: Financing  
-                        # Col 3: Prop Style
-                        # Col 4: Address 1
-                        # Col 5: Address 2
-                        # Col 6: City
-                        # Col 7: List Date
-                        # Col 8: List Price
+                        # FIXED COLUMN MAPPING (8 columns including Financing):
+                        # Col 0: REO Status
+                        # Col 1: Financing
+                        # Col 2: Prop Style
+                        # Col 3: Address 1
+                        # Col 4: Address 2
+                        # Col 5: City
+                        # Col 6: List Date
+                        # Col 7: List Price
                         
-                        # PDF columns: REO Status | Prop Style | Address 1 | Address 2 | City | List Date | List Price
                         reo_status = row[0] if row[0] else ""
-                        prop_style = row[1] if row[1] else ""
-                        address1  = row[2] if row[2] else ""
-                        address2  = row[3] if row[3] else ""
-                        city      = row[4] if row[4] else ""
-                        list_date = row[5] if row[5] else ""
-                        list_price = row[6] if row[6] else ""
+                        financing  = row[1] if len(row) > 1 and row[1] else ""
+                        prop_style = row[2] if len(row) > 2 and row[2] else ""
+                        address1   = row[3] if len(row) > 3 and row[3] else ""
+                        address2   = row[4] if len(row) > 4 and row[4] else ""
+                        city       = row[5] if len(row) > 5 and row[5] else ""
+                        list_date  = row[6] if len(row) > 6 and row[6] else ""
+                        list_price = row[7] if len(row) > 7 and row[7] else ""
                         
                         # Skip empty rows
                         if not address1 or not city:
@@ -124,6 +146,7 @@ def parse_act_pdf(pdf_path):
                         
                         property_data = {
                             'reo_status': reo_status.strip() if reo_status else None,
+                            'reo_status_normalized': normalize_reo_status(reo_status.strip()) if reo_status else None,
                             'manager': None,  # Not in this PDF format
                             'financing': None,  # Not in this PDF format
                             'prop_style': prop_style.strip() if prop_style else None,
@@ -261,15 +284,22 @@ def reconcile_act_vs_database(pdf_path):
                 'act_price': act_prop['list_price'],
                 'db_price': float(match['current_list_price']) if match['current_list_price'] else None,
                 'reo_status': act_prop['reo_status'],
+                'reo_status_normalized': act_prop.get('reo_status_normalized'),
                 'db_status': match['current_status'],
-                'manager': act_prop['manager']
+                'manager': act_prop['manager'],
+                'financing': act_prop.get('financing'),
+                'prop_style': act_prop.get('prop_style')
             })
             matched_db_ids.add(match['id'])
         else:
             results['in_act_not_db'].append({
                 'address': act_prop['address'],
                 'reo_status': act_prop['reo_status'],
+                'reo_status_normalized': act_prop.get('reo_status_normalized'),
                 'manager': act_prop['manager'] or 'N/A',
+                'financing': act_prop.get('financing'),
+                'prop_style': act_prop.get('prop_style'),
+                'city': act_prop.get('city'),
                 'list_price': act_prop['list_price'],
                 'list_date': act_prop['list_date'],
                 'reason': 'Agent did not send email for this property'

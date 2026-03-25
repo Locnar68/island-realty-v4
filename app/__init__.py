@@ -1039,16 +1039,56 @@ def upload_act_spreadsheet():
             # Step 4: Also update status/price for matched properties from spreadsheet
             for match in results.get('matched', []):
                 if match.get('db_id') and match.get('reo_status'):
-                    cur.execute(
-                        """UPDATE properties 
-                           SET reo_status = %s,
-                               current_status = COALESCE(
+                    normalized = match.get('reo_status_normalized') or match.get('reo_status')
+                    update_parts = ["reo_status = %s"]
+                    update_vals = [match['reo_status']]
+                    if match.get('financing'):
+                        update_parts.append("financing_type = COALESCE(financing_type, %s)")
+                        update_vals.append(match['financing'])
+                    if match.get('prop_style'):
+                        update_parts.append("property_type = COALESCE(property_type, %s)")
+                        update_vals.append(match['prop_style'])
+                    update_parts.append("""current_status = COALESCE(
                                    CASE WHEN email_date > '2026-01-27' THEN current_status ELSE %s END,
                                    %s
-                               )
-                           WHERE id = %s""",
-                        (match['reo_status'], match['reo_status'], match['reo_status'], match['db_id'])
-                    )
+                               )""")
+                    update_vals.extend([normalized, normalized])
+                    update_vals.append(match['db_id'])
+                    sql = "UPDATE properties SET " + ", ".join(update_parts) + " WHERE id = %s"
+                    cur.execute(sql, update_vals)
+            
+            # Step 5: INSERT new properties from ACT that don't exist in DB
+            inserted_count = 0
+            for new_prop in results.get('in_act_not_db', []):
+                addr = new_prop.get('address', '')
+                if not addr:
+                    continue
+                normalized_status = new_prop.get('reo_status_normalized') or new_prop.get('reo_status')
+                price = new_prop.get('list_price')
+                city_val = new_prop.get('city')
+                financing_val = new_prop.get('financing')
+                prop_style_val = new_prop.get('prop_style')
+                try:
+                    cur.execute("""
+                        INSERT INTO properties 
+                        (address, city, current_status, reo_status, current_list_price,
+                         financing_type, property_type, data_source, is_active, created_at, updated_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, TRUE, NOW(), NOW())
+                    """, (
+                        addr,
+                        city_val,
+                        normalized_status,
+                        new_prop.get('reo_status'),
+                        price,
+                        financing_val,
+                        prop_style_val,
+                        'act_spreadsheet'
+                    ))
+                    inserted_count += 1
+                except Exception as e:
+                    logging.warning(f"Failed to insert ACT property {addr}: {e}")
+                    conn.rollback()
+                    cur = conn.cursor()
             
             conn.commit()
             cur.close()
@@ -1058,6 +1098,7 @@ def upload_act_spreadsheet():
             import json
             results['applied'] = True
             results['reactivated'] = reactivated
+            results['inserted'] = inserted_count
             results['deactivated'] = deactivated_count
             redis_key = f'act_reconciliation:{datetime.now().strftime("%Y%m%d_%H%M%S")}'
             r.setex(redis_key, 86400, json.dumps(results, default=str))
@@ -1072,6 +1113,7 @@ def upload_act_spreadsheet():
                     "matched": len(results['matched']),
                     "reactivated": reactivated,
                     "deactivated": deactivated_count,
+                    "inserted": results.get('inserted', 0),
                     "in_act_not_db": len(results['in_act_not_db']),
                     "in_db_not_act": len(results['in_db_not_act']),
                     "timestamp": results['timestamp'],
@@ -1316,7 +1358,9 @@ def upload_spreadsheet():
                 if not s or s.lower() in ('nan', 'none', ''):
                     return None
                 sl = s.lower().strip()
-                if sl in ('pending', 'under contract', 'pended', 'in contract'):
+                if sl in ('pending', 'under contract', 'pended', 'in contract',
+                          '1/2 signed', '1/2 signed contract', 'half signed',
+                          '½ signed', '½ signed contract'):
                     return 'In Contract'
                 if sl in ('available', 'lpp', 'auction/available', 'auction available'):
                     return 'Auction Available'
