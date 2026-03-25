@@ -1069,6 +1069,13 @@ def upload_act_spreadsheet():
                 financing_val = new_prop.get('financing')
                 prop_style_val = new_prop.get('prop_style')
                 try:
+                    # Duplicate guard: skip if address already exists in DB
+                    cur.execute(
+                        "SELECT id FROM properties WHERE LOWER(TRIM(address)) = LOWER(TRIM(%s)) LIMIT 1",
+                        (addr,)
+                    )
+                    if cur.fetchone():
+                        continue  # Already in DB, skip insert
                     cur.execute("""
                         INSERT INTO properties 
                         (address, city, current_status, reo_status, current_list_price,
