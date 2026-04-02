@@ -157,6 +157,16 @@
         .card-financing { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 600; background: #e0f2fe; color: #0369a1; margin-bottom: 6px; }
         .card-hold-harmless { display: block; padding: 4px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; margin-bottom: 6px; text-align: center; }
         .card-mls     { display: none; }
+        .card-access  { font-size: 0.78rem; color: var(--gray); margin-top: 6px; padding-top: 5px;
+                        border-top: 1px solid var(--border); display: flex; align-items: center; gap: 5px; }
+        .btn-hh {
+            width: 100%; margin-top: 6px; padding: 6px 10px;
+            background: #92400e; color: white;
+            border: none; border-radius: 7px; font-size: 0.75rem; font-weight: 700;
+            cursor: pointer; transition: background 0.15s; text-decoration: none;
+            display: flex; align-items: center; justify-content: center; gap: 5px;
+        }
+        .btn-hh:hover { background: #78350f; }
         .card-footer  { display: flex; gap: 6px; flex-wrap: wrap; }
         .btn-email {
             flex: 1; padding: 8px; background: var(--navy); color: white;
@@ -688,7 +698,8 @@
                     <div class="card-address">${stripCity(p.address, p.city) || '&mdash;'}</div>
                     ${p.city ? `<div class="card-town">${p.city}</div>` : ""}
                     ${p.financing_type ? `<span class="card-financing"><i class="fas fa-university"></i> ${p.financing_type}</span>` : ''}
-                    ${p.hold_harmless_required ? '<div class="card-hold-harmless"><i class="fas fa-exclamation-triangle"></i> Hold Harmless Required to Enter</div>' : ''}
+                    ${p.agent_access ? `<div class="card-access"><i class="fas fa-key" style="font-size:0.7rem;color:var(--navy-mid)"></i> ${p.agent_access}</div>` : ''}
+                    ${(p.hold_harmless_required && p.hh_attachment_id) ? `<a href="/api/attachments/${p.hh_attachment_id}/view" target="_blank" class="btn-hh" onclick="event.stopPropagation()"><i class="fas fa-exclamation-triangle"></i> Hold Harmless Required to Enter</a>` : p.hold_harmless_required ? '<div class="card-hold-harmless"><i class="fas fa-exclamation-triangle"></i> Hold Harmless Required to Enter</div>' : ''}
 
                     <div class="card-footer">
                         <button class="btn-email" onclick="event.stopPropagation(); showEmailModal(${p.id})">

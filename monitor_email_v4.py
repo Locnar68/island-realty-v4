@@ -80,6 +80,83 @@ def _normalize_status(s):
     return s
 
 
+def apply_rob_rules(subject, body, attachments):
+    """
+    Rob's hard-coded email processing rules (priority over AI).
+
+    Rules:
+      1. "New List Price:" + Lock Box body         -> Available + Proceed
+      2. "New List Price:" + Occupied + auction.com -> Auction/Available + Occupied – NO SHOWS
+      3. "New List Price:" + Hold Harmless body     -> Available + Proceed – Hold Harmless (+ flag)
+      4. "Highest & Best Notification:" subject     -> H&B
+      5. "BOM - Back on Market" subject             -> Available
+      6. "Status Update" + "1st accepted" in body  -> 1st Accepted
+      7. Price Reduction subject                    -> price_only (no status change)
+      7b. ½ Signed / Incontract                    -> BLOCKED (spreadsheet only)
+
+    Returns dict: {new_status, agent_access, hold_harmless, rule_fired, price_only}
+    """
+    result = {
+        'new_status': None,
+        'agent_access': None,
+        'hold_harmless': False,
+        'rule_fired': None,
+        'price_only': False,
+    }
+
+    subj  = (subject or '').lower()
+    body_l = (body or '').lower()
+
+    # RULES 1 / 2 / 3 — New List Price emails (access-based routing)
+    if 'new list price:' in subj:
+        if 'hold harmless' in body_l:
+            result.update({
+                'new_status': 'Available',
+                'agent_access': 'Proceed – Hold Harmless',
+                'hold_harmless': True,
+                'rule_fired': 'NEW_LIST_PRICE_HOLD_HARMLESS',
+            })
+        elif 'occupied' in body_l and 'auction.com' in body_l:
+            result.update({
+                'new_status': 'Auction/Available',
+                'agent_access': 'Occupied – NO SHOWS',
+                'rule_fired': 'NEW_LIST_PRICE_OCCUPIED_AUCTION',
+            })
+        elif 'lock box' in body_l or 'lockbox' in body_l:
+            result.update({
+                'new_status': 'Available',
+                'agent_access': 'Proceed',
+                'rule_fired': 'NEW_LIST_PRICE_LOCKBOX',
+            })
+        else:
+            result.update({
+                'new_status': 'Available',
+                'rule_fired': 'NEW_LIST_PRICE_DEFAULT',
+            })
+
+    # RULE 4 — Highest & Best
+    elif any(x in subj for x in [
+            'highest & best notification:', 'highest and best notification:',
+            'h&b notification', 'highest & best']):
+        result.update({'new_status': 'H&B', 'rule_fired': 'HIGHEST_AND_BEST'})
+
+    # RULE 5 — Back on Market
+    elif 'bom - back on market' in subj or 'back on market' in subj:
+        result.update({'new_status': 'Available', 'rule_fired': 'BACK_ON_MARKET'})
+
+    # RULE 6 — Status Update + 1st accepted in body
+    elif 'status update' in subj:
+        if any(x in body_l for x in ['1st accepted', '1st accept', 'first accepted']):
+            result.update({'new_status': '1st Accepted', 'rule_fired': 'STATUS_UPDATE_1ST_ACCEPTED'})
+
+    # RULE 7 — Price Reduction: price only, no status change
+    elif any(x in subj for x in ['price reduction', 'price reduced', 'reduced price']):
+        result.update({'price_only': True, 'rule_fired': 'PRICE_REDUCTION_PRICE_ONLY'})
+
+    return result
+
+
+
 class EmailMonitorV4:
     """Enhanced email monitor with AI processing for V4"""
     
@@ -416,6 +493,9 @@ class EmailMonitorV4:
                 any_foil = False
                 for att in email_data.get('attachments', []):
                     is_foil = att.get('is_foil', False)
+                    # Also flag as FOIL if email subject contains 'foil'
+                    if 'foil' in email_data.get('subject', '').lower():
+                        is_foil = True
                     if is_foil:
                         any_foil = True
                     
@@ -429,8 +509,11 @@ class EmailMonitorV4:
                     
                     # Check filename patterns for category
                     fname_lower = att['filename'].lower()
-                    if 'foil' in fname_lower:
+                    email_subject_lower = email_data.get('subject', '').lower()
+                    # FOIL: check both filename AND email subject
+                    if 'foil' in fname_lower or 'foil' in email_subject_lower:
                         category = 'FOIL'
+                        is_foil = True
                     elif any(x in fname_lower for x in ['violation', 'ecb']):
                         category = 'Violations'
                     elif any(x in fname_lower for x in ['co ', 'tco', 'certificate']):
@@ -466,16 +549,59 @@ class EmailMonitorV4:
                         WHERE id = %s
                     """, (property_id, email_data['id'], property_id))
                 
+                # 4.5 Rob's hard-coded rules (priority over AI extraction)
+                rob = apply_rob_rules(
+                    email_data.get('subject', ''),
+                    email_data.get('body', ''),
+                    email_data.get('attachments', [])
+                )
+                logger.info(f"Rob rule: {rob['rule_fired']} | status={rob['new_status']} | access={rob['agent_access']}")
+
+                # Apply agent_access update from rule
+                if rob.get('agent_access'):
+                    cursor.execute(
+                        'UPDATE properties SET agent_access = %s, updated_at = NOW() WHERE id = %s',
+                        (rob['agent_access'], property_id)
+                    )
+                    actions.append(f"agent_access:{rob['agent_access']}")
+
+                # Apply hold_harmless flag and tag the PDF attachment
+                if rob.get('hold_harmless'):
+                    cursor.execute(
+                        'UPDATE properties SET hold_harmless_required = TRUE, updated_at = NOW() WHERE id = %s',
+                        (property_id,)
+                    )
+                    cursor.execute("""
+                        UPDATE attachments SET category = 'Hold Harmless'
+                        WHERE property_id = %s
+                          AND category IS DISTINCT FROM 'Hold Harmless'
+                          AND (mime_type = 'application/pdf' OR LOWER(filename) LIKE '%%.pdf')
+                    """, (property_id,))
+                    actions.append('hold_harmless_flagged')
+
                 # 5. Handle status change (with price protection & TOTM support)
                 # NOTE: _normalize_status() is a module-level function available here and in step 6
                 status_change = extracted_data.get('status_change')
                 normalized_new_status = None  # will be set below if status_change present
-                if status_change and status_change.get('new_status'):
+                if rob.get('price_only'):
+                    # Price reduction: update price only, do NOT change status
+                    normalized_new_status = None
+                    logger.info(f'Price-only rule: skipping status update for property {property_id}')
+                elif rob.get('new_status'):
+                    # Rob rule overrides AI status
+                    normalized_new_status = rob['new_status']
+                elif status_change and status_change.get('new_status'):
                     normalized_new_status = _normalize_status(status_change['new_status'])
                     cursor.execute("SELECT current_status, current_list_price FROM properties WHERE id = %s", (property_id,))
                     current = cursor.fetchone()
                     old_status = current['current_status'] if current else None
                     
+                    # RULE 7b: ½ Signed and Incontract are spreadsheet-only
+                    _SPREADSHEET_ONLY = {'½ Signed', 'Incontract', 'In Contract'}
+                    if normalized_new_status in _SPREADSHEET_ONLY:
+                        logger.info(f'BLOCKED email status {normalized_new_status} for property {property_id} — spreadsheet only')
+                        normalized_new_status = None
+
                     if old_status != normalized_new_status:
                         # TOTM handling: record when property went TOTM
                         if normalized_new_status == 'TOTM':
