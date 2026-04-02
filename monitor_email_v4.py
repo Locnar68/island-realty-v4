@@ -63,18 +63,20 @@ def _normalize_status(s):
     if not s:
         return s
     sl = s.lower().strip()
-    if sl in ('pending', 'under contract', 'pended', 'in contract',
-              '1/2 signed', '1/2 signed contract', 'half signed',
-              '½ signed', '½ signed contract'):
-        return 'In Contract'
-    if sl in ('available', 'lpp', 'auction/available', 'auction available'):
-        return 'Auction Available'
+    if sl in ('pending', 'under contract', 'pended', 'in contract'):
+        return 'Incontract'
+    if sl in ('1/2 signed', '1/2 signed contract', 'half signed', '½ signed', '½ signed contract'):
+        return '½ Signed'
+    if sl in ('available', 'lpp'):
+        return 'Available'
+    if sl in ('auction/available', 'auction available'):
+        return 'Auction/Available'
     if sl in ('1st accept', '1st accepted', 'first accepted'):
-        return 'First Accepted'
+        return '1st Accepted'
     if sl in ('t-o-t-m', 'temporarily off the market', 'totm'):
         return 'TOTM'
-    if sl in ('highest and best', 'highest & best'):
-        return 'Highest & Best'
+    if sl in ('highest and best', 'highest & best', 'h&b', 'h & b'):
+        return 'H&B'
     if sl in ('price reduced', 'price reduction', 'reduced'):
         return None  # Price reductions: update price only, keep existing status
     return s
@@ -460,7 +462,13 @@ class EmailMonitorV4:
                         property_id = self._create_property(cursor, property_data, email_data)
                         actions.append(f'created_property_{property_id}')
                 elif address:
-                    cursor.execute("SELECT id FROM properties WHERE LOWER(address) LIKE LOWER(%s) LIMIT 1", (f'%{address}%',))
+                    # Prefer longer address match (more specific) over shorter partial match
+                    cursor.execute(
+                        "SELECT id FROM properties WHERE LOWER(address) LIKE LOWER(%s) "
+                        "AND (is_active IS NULL OR is_active = TRUE) "
+                        "ORDER BY LENGTH(address) DESC LIMIT 1",
+                        (f'%{address}%',)
+                    )
                     row = cursor.fetchone()
                     if row:
                         property_id = row['id']
