@@ -136,16 +136,21 @@
         }
         .card-body { padding: 14px 16px; }
         .status-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.76rem; font-weight: 700; margin-bottom: 8px; }
-        .s-active            { background: #dcfce7; color: #15803d; }
-        .s-price-reduction   { background: #fef9c3; color: #92400e; }
-        .s-highest-and-best  { background: #fee2e2; color: #b91c1c; }
-        .s-first-accepted    { background: #fee2e2; color: #b91c1c; }
-        .s-pending           { background: #ede9fe; color: #6d28d9; }
-        .s-sold              { background: #f1f5f9; color: #475569; }
-        .s-t-o-t-m           { background: #ffedd5; color: #c2410c; }
-        .s-hold              { background: #f5f3ff; color: #7c3aed; }
-        .s-in-contract       { background: #dbeafe; color: #1d4ed8; }
+        .s-available         { background: #dcfce7; color: #15803d; }
         .s-auction-available { background: #fef3c7; color: #92400e; }
+        .s-available         { background: #dcfce7; color: #15803d; }
+        .s-incontract        { background: #dbeafe; color: #1d4ed8; }
+        .s-first-accepted    { background: #fee2e2; color: #b91c1c; }
+        .s-hb                { background: #fee2e2; color: #b91c1c; }
+        .s-totm              { background: #ffedd5; color: #c2410c; }
+        .s-half-signed       { background: #ede9fe; color: #6d28d9; }
+        .s-1st-accepted      { background: #fee2e2; color: #b91c1c; }
+        .s-incontract        { background: #dbeafe; color: #1d4ed8; }
+        .s-half-signed       { background: #ede9fe; color: #6d28d9; }
+        .s-handb             { background: #fecdd3; color: #be123c; }
+        .s-sold              { background: #f1f5f9; color: #475569; }
+        .s-closed            { background: #f1f5f9; color: #475569; }
+        .s-totm              { background: #ffedd5; color: #c2410c; }
         .card-price   { font-size: 1.3rem; font-weight: 700; color: var(--navy); margin-bottom: 2px; }
         .card-address { font-size: 1.15rem; font-weight: 600; color: var(--text); margin-bottom: 0; line-height: 1.3; }
         .card-town    { font-size: 1.15rem; font-weight: 700; color: var(--navy-mid); margin-bottom: 8px; line-height: 1.2; }
@@ -310,6 +315,11 @@
             padding: 11px 20px; background: #eee; color: var(--navy); border: none;
             border-radius: 8px; font-weight: 600; cursor: pointer;
         }
+        .btn-edit-delete {
+            padding: 11px 16px; background: #dc2626; color: white; border: none;
+            border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 0.85rem;
+        }
+        .btn-edit-delete:hover { background: #b91c1c; }
         #editStatusMsg { font-size: 0.85rem; min-height: 20px; color: var(--green); margin-top: 6px; }
         #editStatusMsg.error { color: var(--red); }
 
@@ -393,17 +403,15 @@
             <option value="oldest">Oldest</option>
             <option value="price-high">Price: High → Low</option>
             <option value="price-low">Price: Low → High</option>
-            <option value="price-reduction">Price Reductions First</option>
         </select>
         <div class="filters">
             <button class="filter-btn active" onclick="doFilter('all', event)">All</button>
-            <button class="filter-btn" onclick="doFilter('Active', event)">Active</button>
-            <button class="filter-btn" onclick="doFilter('Price Reduction', event)">Price Reduced</button>
-            <button class="filter-btn" onclick="doFilter('Highest & Best', event)">H&amp;B</button>
-            <button class="filter-btn" onclick="doFilter('Auction Available', event)">Auction</button>
-            <button class="filter-btn" onclick="doFilter('First Accepted', event)">1st Accept</button>
-            <button class="filter-btn" onclick="doFilter('In Contract', event)">In Contract</button>
-            <button class="filter-btn" onclick="doFilter('1/2 Signed', event)">&frac12; Signed</button>
+            <button class="filter-btn" onclick="doFilter('Available', event)">Available</button>
+            <button class="filter-btn" onclick="doFilter('H&amp;B', event)">H&amp;B</button>
+            <button class="filter-btn" onclick="doFilter('Auction/Available', event)">Auction/Available</button>
+            <button class="filter-btn" onclick="doFilter('1st Accepted', event)">1st Accepted</button>
+            <button class="filter-btn" onclick="doFilter('Incontract', event)">Incontract</button>
+            <button class="filter-btn" onclick="doFilter('½ Signed', event)">½ Signed</button>
 
             <button class="filter-btn" onclick="doFilter('FOIL', event)" style="background:#c8102e;color:white;border-color:#c8102e;font-weight:700;"><i class="fas fa-file-alt"></i> FOIL</button>
         </div>
@@ -417,7 +425,7 @@
     </div>
     <div class="stat-card">
         <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
-        <div><div class="stat-number" id="activeCount">–</div><div class="stat-label">Active</div></div>
+        <div><div class="stat-number" id="activeCount">–</div><div class="stat-label">Available</div></div>
     </div>
     <div class="stat-card">
         <div class="stat-icon orange"><i class="fas fa-paperclip"></i></div>
@@ -425,7 +433,7 @@
     </div>
     <div class="stat-card">
         <div class="stat-icon gold"><i class="fas fa-tag"></i></div>
-        <div><div class="stat-number" id="priceRedCount">–</div><div class="stat-label">Price Reduced</div></div>
+        <div><div class="stat-number" id="priceRedCount">–</div><div class="stat-label">H&amp;B</div></div>
     </div>
 </div>
 
@@ -602,11 +610,11 @@
         // 4. Update stats
         document.getElementById('totalCount').textContent = list.length;
         document.getElementById('activeCount').textContent =
-            allProperties.filter(p => p.current_status === 'Active').length;
+            allProperties.filter(p => ['Available','Auction/Available','Auction Available'].includes(p.current_status)).length;
         document.getElementById('withAttachCount').textContent =
             allProperties.filter(p => p.has_attachments).length;
         document.getElementById('priceRedCount').textContent =
-            allProperties.filter(p => p.current_status === 'Price Reduction').length;
+            allProperties.filter(p => ['H&B','TOTM'].includes(p.current_status)).length;
 
         // 5a. Deduplicate by MLS, then by normalized address
         const seenMls  = new Set();
@@ -630,8 +638,23 @@
             return;
         }
 
-        const sc = s => (s||'active').toLowerCase()
-            .replace(/\s+/g,'-').replace(/&/g,'and').replace(/[^a-z0-9-]/g,'');
+        const STATUS_CLASS = {
+            'Auction/Available' : 'auction-available',
+            'Auction Available' : 'auction-available',
+            'Available'         : 'available',
+            'Incontract'        : 'incontract',
+            'In Contract'       : 'incontract',
+            '1st Accepted'      : 'first-accepted',
+            'H&B'               : 'hb',
+            'TOTM'              : 'totm',
+            '½ Signed'         : 'half-signed',
+            'Active'            : 'available',
+            'Pending'           : 'pending',
+            'Sold'              : 'sold',
+            'Hold'              : 'hold',
+            'Price Reduction'   : 'price-reduction',
+        };
+        const sc = s => STATUS_CLASS[s] || (s||'available').toLowerCase().replace(/\s+/g,'-').replace(/&/g,'').replace(/[^a-z0-9-]/g,'');
 
         container.innerHTML = list.map(p => {
             const price = p.current_list_price
@@ -660,7 +683,7 @@
                     ${(p.attachment_count||0) > 0 ? `<div class="card-badge-tr"><i class="fas fa-paperclip"></i> ${p.attachment_count}</div>` : ''}
                 </div>
                 <div class="card-body">
-                    <span class="status-badge s-${sc(p.current_status)}">${p.current_status || 'Active'}</span>
+                    <span class="status-badge s-${sc(p.current_status)}">${p.current_status || 'Available'}</span>
                     <div class="card-price">${price}</div>
                     <div class="card-address">${stripCity(p.address, p.city) || '&mdash;'}</div>
                     ${p.city ? `<div class="card-town">${p.city}</div>` : ""}
@@ -673,7 +696,7 @@
                         </button>
                         ${photosBtn}
                         ${foilBtn}
-                        ${isAdmin ? `<button class="btn-edit" onclick="event.stopPropagation(); openEditModal(${p.id}, '${(p.address||'').replace(/'/g,"\\'")}', '${(p.current_status||'Active').replace(/'/g,"\\'")}', '${p.current_list_price||''}')"><i class="fas fa-pencil-alt"></i> Edit</button>` : ''}
+                        ${isAdmin ? `<button class="btn-edit" onclick="event.stopPropagation(); openEditModal(${p.id}, '${(p.address||'').replace(/'/g,"\\'")}', '${(p.current_status||'Available').replace(/'/g,"\\'")}', '${p.current_list_price||''}', '${(p.financing_type||'').replace(/'/g,"\\'")}')" ><i class="fas fa-pencil-alt"></i> Edit</button>` : ''}
                     </div>
                 </div>
             </div>`;
@@ -909,15 +932,23 @@
 
       <label>Status</label>
       <select id="editStatus">
-        <option value="Active">Active</option>
-        <option value="Auction Available">Auction Available</option>
-        <option value="First Accepted">First Accepted</option>
-        <option value="1/2 Signed">1/2 Signed</option>
-        <option value="In Contract">In Contract</option>
-        <option value="Highest & Best">Highest & Best</option>
+        <option value="Available">Available</option>
+        <option value="Auction/Available">Auction/Available</option>
+        <option value="1st Accepted">1st Accepted</option>
+        <option value="½ Signed">½ Signed</option>
+        <option value="Incontract">Incontract</option>
+        <option value="H&amp;B">H&amp;B</option>
         <option value="TOTM">TOTM</option>
         <option value="Sold">Sold</option>
         <option value="Closed">Closed</option>
+      </select>
+
+      <label>Financing Type</label>
+      <select id="editFinancing">
+        <option value="">-- No Change --</option>
+        <option value="Cash">Cash</option>
+        <option value="Cash Rehab">Cash Rehab</option>
+        <option value="Cash Conventional">Cash Conventional</option>
       </select>
 
       <label>List Price</label>
@@ -926,6 +957,7 @@
       <div id="editStatusMsg"></div>
     </div>
     <div class="edit-modal-footer">
+      <button class="btn-edit-delete" onclick="deleteProperty()"><i class="fas fa-trash"></i> Delete</button>
       <button class="btn-edit-cancel" onclick="closeEditModal()">Cancel</button>
       <button class="btn-edit-save" onclick="savePropertyEdit()"><i class="fas fa-save"></i> Save Changes</button>
     </div>
@@ -933,10 +965,11 @@
 </div>
 
 <script>
-function openEditModal(id, address, status, price) {
+function openEditModal(id, address, status, price, financing) {
     document.getElementById('editPropertyId').value = id;
     document.getElementById('editAddress').textContent = address;
     document.getElementById('editStatus').value = status;
+    document.getElementById('editFinancing').value = financing || '';
     document.getElementById('editPrice').value = price ? Number(price).toLocaleString() : '';
     document.getElementById('editStatusMsg').textContent = '';
     document.getElementById('editModal').classList.add('open');
@@ -947,6 +980,7 @@ function closeEditModal() {
 async function savePropertyEdit() {
     const id = document.getElementById('editPropertyId').value;
     const status = document.getElementById('editStatus').value;
+    const financing = document.getElementById('editFinancing').value;
     const priceRaw = document.getElementById('editPrice').value.replace(/[$,]/g, '').trim();
     const msg = document.getElementById('editStatusMsg');
     msg.textContent = 'Saving...';
@@ -954,6 +988,7 @@ async function savePropertyEdit() {
 
     const body = { current_status: status };
     if (priceRaw) body.current_list_price = parseFloat(priceRaw);
+    if (financing) body.financing_type = financing;
 
     try {
         const res = await fetch('/api/admin/property/' + id + '/update', {
@@ -968,6 +1003,31 @@ async function savePropertyEdit() {
             setTimeout(() => { closeEditModal(); loadProperties(); }, 800);
         } else {
             msg.textContent = data.error || 'Save failed';
+            msg.className = 'error';
+        }
+    } catch(e) {
+        msg.textContent = 'Network error';
+        msg.className = 'error';
+    }
+}
+async function deleteProperty() {
+    const id = document.getElementById('editPropertyId').value;
+    const addr = document.getElementById('editAddress').textContent;
+    if (!confirm('Remove "' + addr + '" from the website? It will be hidden from the property list.')) return;
+    const msg = document.getElementById('editStatusMsg');
+    msg.textContent = 'Removing...';
+    msg.className = '';
+    try {
+        const res = await fetch('/api/admin/property/' + id + '/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (data.success) {
+            msg.textContent = 'Removed!';
+            setTimeout(() => { closeEditModal(); loadProperties(); }, 600);
+        } else {
+            msg.textContent = data.error || 'Delete failed';
             msg.className = 'error';
         }
     } catch(e) {
