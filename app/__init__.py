@@ -1056,6 +1056,9 @@ def upload_act_spreadsheet():
                     update_vals.append(match['db_id'])
                     sql = "UPDATE properties SET " + ", ".join(update_parts) + " WHERE id = %s"
                     cur.execute(sql, update_vals)
+            # Auto-deactivate if Sold or Closed email received
+            if normalized in ("Sold", "Closed"):
+                cur.execute("UPDATE properties SET is_active = FALSE WHERE id = %s", (match["db_id"],))
             
             # Step 5: INSERT new properties from ACT that don't exist in DB
             inserted_count = 0
