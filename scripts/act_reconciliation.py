@@ -70,18 +70,23 @@ def normalize_reo_status(s):
     if not s:
         return s
     sl = s.lower().strip()
-    if sl in ('pending', 'under contract', 'pended', 'in contract',
-              '1/2 signed', '1/2 signed contract', 'half signed',
-              '½ signed', '½ signed contract'):
-        return 'In Contract'
+    if sl in ('pending', 'under contract', 'pended', 'in contract'):
+        return 'Incontract'
+    if sl in ('1/2 signed', '1/2 signed contract', 'half signed',
+              '½ signed', '½ signed contract', '1/2 signed contract'):
+        return '½ Signed'
     if sl in ('available', 'lpp', 'auction/available', 'auction available'):
-        return 'Auction Available'
+        return 'Auction/Available'
     if sl in ('1st accept', '1st accepted', 'first accepted', 'first accept'):
-        return 'First Accepted'
+        return '1st Accepted'
     if sl in ('t-o-t-m', 'temporarily off the market', 'totm'):
         return 'TOTM'
-    if sl in ('highest and best', 'highest & best'):
-        return 'Highest & Best'
+    if sl in ('highest and best', 'highest & best', 'h&b', 'h & b'):
+        return 'H&B'
+    if sl in ('sold',):
+        return 'Sold'
+    if sl in ('closed',):
+        return 'Closed'
     if sl in ('price reduced', 'price reduction', 'reduced'):
         return None
     return s
