@@ -75,7 +75,11 @@ def normalize_reo_status(s):
     if sl in ('1/2 signed', '1/2 signed contract', 'half signed',
               '½ signed', '½ signed contract', '1/2 signed contract'):
         return '½ Signed'
-    if sl in ('available', 'lpp', 'auction/available', 'auction available'):
+    # Available (plain) — must be separate from Auction/Available
+    if sl in ('available', 'lpp'):
+        return 'Available'
+    # Auction/Available
+    if sl in ('auction/available', 'auction available'):
         return 'Auction/Available'
     if sl in ('1st accept', '1st accepted', 'first accepted', 'first accept'):
         return '1st Accepted'
@@ -123,14 +127,17 @@ def parse_act_pdf(pdf_path):
                         # Col 6: List Date
                         # Col 7: List Price
                         
-                        reo_status = row[0] if row[0] else ""
-                        financing  = row[1] if len(row) > 1 and row[1] else ""
-                        prop_style = row[2] if len(row) > 2 and row[2] else ""
-                        address1   = row[3] if len(row) > 3 and row[3] else ""
-                        address2   = row[4] if len(row) > 4 and row[4] else ""
-                        city       = row[5] if len(row) > 5 and row[5] else ""
-                        list_date  = row[6] if len(row) > 6 and row[6] else ""
-                        list_price = row[7] if len(row) > 7 and row[7] else ""
+                        def cell(idx, d=''):
+                            return str(row[idx]).strip() if idx < len(row) and row[idx] else d
+                        reo_status   = cell(0)
+                        financing    = cell(1)
+                        prop_style   = cell(2)
+                        address1     = cell(3)
+                        address2     = cell(4)
+                        city         = cell(5)
+                        list_price_s= cell(6)
+                        occupancy    = cell(7)
+                        agent_access = cell(8)
                         
                         # Skip empty rows
                         if not address1 or not city:
@@ -144,8 +151,8 @@ def parse_act_pdf(pdf_path):
                         
                         # Clean list price
                         price_clean = None
-                        if list_price:
-                            price_match = re.search(r'\$\s*([\d,]+)', list_price)
+                        if list_price_s:
+                            price_match = re.search(r'\$\s*([\d,]+)', list_price_s)
                             if price_match:
                                 price_clean = float(price_match.group(1).replace(',', ''))
                         
@@ -153,13 +160,15 @@ def parse_act_pdf(pdf_path):
                             'reo_status': reo_status.strip() if reo_status else None,
                             'reo_status_normalized': normalize_reo_status(reo_status.strip()) if reo_status else None,
                             'manager': None,  # Not in this PDF format
-                            'financing': None,  # Not in this PDF format
+                            'financing': financing.strip() if financing else None,
+                            'occupancy': occupancy.strip() if occupancy else None,
+                            'agent_access': agent_access.strip() if agent_access else None,
+                            'hold_harmless': bool(agent_access and 'hold harmless' in agent_access.lower()),
                             'prop_style': prop_style.strip() if prop_style else None,
                             'address': full_address.strip(),
                             'address_normalized': normalize_address(full_address),
                             'street_number': extract_street_number(address1),
                             'city': city.strip() if city else None,
-                            'list_date': list_date.strip() if list_date else None,
                             'list_price': price_clean
                         }
                         
@@ -293,7 +302,10 @@ def reconcile_act_vs_database(pdf_path):
                 'db_status': match['current_status'],
                 'manager': act_prop['manager'],
                 'financing': act_prop.get('financing'),
-                'prop_style': act_prop.get('prop_style')
+                'prop_style': act_prop.get('prop_style'),
+                'agent_access': act_prop.get('agent_access'),
+                'occupancy': act_prop.get('occupancy'),
+                'hold_harmless': act_prop.get('hold_harmless', False),
             })
             matched_db_ids.add(match['id'])
         else:
@@ -301,12 +313,13 @@ def reconcile_act_vs_database(pdf_path):
                 'address': act_prop['address'],
                 'reo_status': act_prop['reo_status'],
                 'reo_status_normalized': act_prop.get('reo_status_normalized'),
-                'manager': act_prop['manager'] or 'N/A',
                 'financing': act_prop.get('financing'),
                 'prop_style': act_prop.get('prop_style'),
                 'city': act_prop.get('city'),
                 'list_price': act_prop['list_price'],
-                'list_date': act_prop['list_date'],
+                'agent_access': act_prop.get('agent_access'),
+                'occupancy': act_prop.get('occupancy'),
+                'hold_harmless': act_prop.get('hold_harmless', False),
                 'reason': 'Agent did not send email for this property'
             })
     

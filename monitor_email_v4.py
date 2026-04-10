@@ -67,7 +67,7 @@ def _normalize_status(s):
         return 'Incontract'
     if sl in ('1/2 signed', '1/2 signed contract', 'half signed', '½ signed', '½ signed contract'):
         return '½ Signed'
-    if sl in ('available', 'lpp'):
+    if sl in ('available', 'lpp', 'active', 'back on market', 'bom'):
         return 'Available'
     if sl in ('auction/available', 'auction available'):
         return 'Auction/Available'
@@ -444,8 +444,27 @@ class EmailMonitorV4:
             
             try:
                 property_data = extracted_data.get('property_data', {})
-                
-                if not property_data:
+
+                # Fallback: extract address from subject for known email patterns
+                # when AI returns empty property_data (e.g. sparse 'New List Price:' emails)
+                if not property_data or not (property_data.get('mls_number') or property_data.get('address')):
+                    _subj = email_data.get('subject', '')
+                    _m = re.search(
+                        r'(?:re:\s*)?(?:new list price:|new listing:|bom[\s\-]back on market:?)\s*'
+                        r'(.+?)\s+[A-Z]{2}\s+\d{5}',
+                        _subj, re.IGNORECASE
+                    )
+                    if _m:
+                        _raw = _m.group(1).strip()  # e.g. '811 West Park Avenue Long Beach'
+                        _words = _raw.split()
+                        # Use first 3 words (house# + 2 street words) - reliable lookup fragment
+                        _lookup = ' '.join(_words[:3]) if len(_words) >= 3 else _raw
+                        property_data = dict(property_data or {})
+                        property_data['address'] = _lookup
+                        logger.info(f'Subject address fallback extracted: {_lookup!r}')
+
+                if not property_data or not (property_data.get('mls_number') or property_data.get('address')):
+                    conn.commit()
                     return {'property_id': None, 'actions': ['no_property_data']}
                 
                 # 1. Find or create property

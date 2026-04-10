@@ -1048,25 +1048,10 @@ def upload_act_spreadsheet():
                     if match.get('prop_style'):
                         update_parts.append("property_type = COALESCE(property_type, %s)")
                         update_vals.append(match['prop_style'])
-                    # Update price from spreadsheet
-                    if match.get('act_price') and match['act_price'] > 0:
-                        update_parts.append("current_list_price = %s")
-                        update_vals.append(match['act_price'])
-                    # Update agent_access and hold_harmless from spreadsheet
-                    if match.get('agent_access'):
-                        update_parts.append("agent_access = %s")
-                        update_vals.append(match['agent_access'])
-                        update_parts.append("hold_harmless_required = %s")
-                        update_vals.append(match.get('hold_harmless', False))
-                    if match.get('occupancy'):
-                        update_parts.append("occupancy_status = %s")
-                        update_vals.append(match['occupancy'])
-                    # H&B preservation: keep H&B unless spreadsheet shows stronger status
-                    update_parts.append(
-                        "current_status = CASE "
-                        "WHEN current_status = 'H&B' AND %s NOT IN ('1st Accepted', '½ Signed', 'Incontract', 'Sold', 'Closed') THEN current_status "
-                        "ELSE %s END"
-                    )
+                    update_parts.append("""current_status = COALESCE(
+                                   CASE WHEN email_date > '2026-01-27' THEN current_status ELSE %s END,
+                                   %s
+                               )""")
                     update_vals.extend([normalized, normalized])
                     update_vals.append(match['db_id'])
                     sql = "UPDATE properties SET " + ", ".join(update_parts) + " WHERE id = %s"
@@ -1094,15 +1079,11 @@ def upload_act_spreadsheet():
                     )
                     if cur.fetchone():
                         continue  # Already in DB, skip insert
-                    agent_access_val = new_prop.get('agent_access')
-                    occupancy_val = new_prop.get('occupancy')
-                    hh_val = new_prop.get('hold_harmless', False)
                     cur.execute("""
                         INSERT INTO properties 
                         (address, city, current_status, reo_status, current_list_price,
-                         financing_type, property_type, agent_access, occupancy_status,
-                         hold_harmless_required, data_source, is_active, created_at, updated_at)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE, NOW(), NOW())
+                         financing_type, property_type, data_source, is_active, created_at, updated_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, TRUE, NOW(), NOW())
                     """, (
                         addr,
                         city_val,
@@ -1111,9 +1092,6 @@ def upload_act_spreadsheet():
                         price,
                         financing_val,
                         prop_style_val,
-                        agent_access_val,
-                        occupancy_val,
-                        hh_val,
                         'act_spreadsheet'
                     ))
                     inserted_count += 1
