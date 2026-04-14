@@ -23,6 +23,7 @@ from googleapiclient.errors import HttpError
 import base64
 from email.mime.text import MIMEText
 import psycopg2
+import re
 from psycopg2.extras import RealDictCursor
 import json
 from bs4 import BeautifulSoup
@@ -572,7 +573,8 @@ class EmailMonitorV4:
                                 SELECT COUNT(*) FROM attachments WHERE property_id = %s
                             ),
                             last_email_id = %s,
-                            updated_at = NOW()
+                            updated_at = NOW(),
+                last_activity_date = NOW()
                         WHERE id = %s
                     """, (property_id, email_data['id'], property_id))
                 
@@ -587,7 +589,7 @@ class EmailMonitorV4:
                 # Apply agent_access update from rule
                 if rob.get('agent_access'):
                     cursor.execute(
-                        'UPDATE properties SET agent_access = %s, updated_at = NOW() WHERE id = %s',
+                        'UPDATE properties SET agent_access = %s, updated_at = NOW(), last_activity_date = NOW() WHERE id = %s',
                         (rob['agent_access'], property_id)
                     )
                     actions.append(f"agent_access:{rob['agent_access']}")
@@ -595,7 +597,7 @@ class EmailMonitorV4:
                 # Apply hold_harmless flag and tag the PDF attachment
                 if rob.get('hold_harmless'):
                     cursor.execute(
-                        'UPDATE properties SET hold_harmless_required = TRUE, updated_at = NOW() WHERE id = %s',
+                        'UPDATE properties SET hold_harmless_required = TRUE, updated_at = NOW(), last_activity_date = NOW() WHERE id = %s',
                         (property_id,)
                     )
                     cursor.execute("""
@@ -642,8 +644,8 @@ class EmailMonitorV4:
                             """, (normalized_new_status, email_data['id'], property_id))
                             logger.info(f"Property {property_id} set to TOTM - hidden from public view")
                         
-                        # Back on Market from TOTM: restore to Active, clear TOTM date, keep last price
-                        elif normalized_new_status == 'Active' and old_status == 'TOTM':
+                        # Back on Market from TOTM: restore to Available, clear TOTM date, keep last price
+                        elif normalized_new_status == 'Available' and old_status == 'TOTM':
                             cursor.execute("""
                                 UPDATE properties SET 
                                     current_status = %s, 
@@ -689,7 +691,8 @@ class EmailMonitorV4:
                         UPDATE properties SET 
                             current_list_price = %s,
                             original_list_price = NULL,
-                            updated_at = NOW()
+                            updated_at = NOW(),
+                last_activity_date = NOW()
                         WHERE id = %s AND (current_list_price IS NULL OR current_list_price != %s)
                     """, (new_price, property_id, new_price))
                     if cursor.rowcount > 0:
@@ -719,7 +722,7 @@ class EmailMonitorV4:
                             due_at = dt_class.strptime(hb_due_date, "%Y-%m-%d").replace(hour=23, minute=59)
                         
                         cursor.execute("""
-                            UPDATE properties SET highest_best_due_at = %s, updated_at = NOW()
+                            UPDATE properties SET highest_best_due_at = %s, updated_at = NOW(), last_activity_date = NOW()
                             WHERE id = %s
                         """, (due_at, property_id))
                         
@@ -757,13 +760,20 @@ class EmailMonitorV4:
         """Create a new property record"""
         cursor.execute("""
             INSERT INTO properties 
-            (mls_number, address, city, zip_code, property_type, 
-             current_list_price, original_list_price, current_status, 
-             data_source, last_email_id, email_subject, email_from, email_date)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            (mls_number, address, city, zip_code, property_type,
+             current_list_price, original_list_price, current_status,
+             financing_type, agent_access, occupancy_status, reo_status,
+             data_source, last_email_id, email_subject, email_from, email_date,
+             last_activity_date)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
             ON CONFLICT (mls_number) DO UPDATE SET
                 address = COALESCE(EXCLUDED.address, properties.address),
-                updated_at = NOW()
+                city = COALESCE(EXCLUDED.city, properties.city),
+                current_list_price = COALESCE(EXCLUDED.current_list_price, properties.current_list_price),
+                financing_type = COALESCE(EXCLUDED.financing_type, properties.financing_type),
+                agent_access = COALESCE(EXCLUDED.agent_access, properties.agent_access),
+                updated_at = NOW(),
+                last_activity_date = NOW()
             RETURNING id
         """, (
             property_data.get('mls_number'),
@@ -773,7 +783,11 @@ class EmailMonitorV4:
             property_data.get('property_type'),
             property_data.get('current_list_price'),
             property_data.get('original_list_price'),
-            property_data.get('current_status', 'Active'),
+            property_data.get('current_status', 'Available'),
+            property_data.get('financing_type'),
+            property_data.get('agent_access'),
+            property_data.get('occupancy_status'),
+            property_data.get('reo_status'),
             'email',
             email_data['id'],
             email_data['subject'],

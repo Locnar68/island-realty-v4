@@ -613,8 +613,8 @@
                     return aP - bP || new Date(b.updated_at) - new Date(a.updated_at);
                 });
                 break;
-            default: // most-recent — API already returns this order
-                list.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+            default: // most-recent — sort by last_activity_date
+                list.sort((a, b) => new Date(b.last_activity_date||b.updated_at) - new Date(a.last_activity_date||a.updated_at));
         }
 
         // 4. Update stats
@@ -663,6 +663,9 @@
             'Sold'              : 'sold',
             'Hold'              : 'hold',
             'Price Reduction'   : 'price-reduction',
+            '1st Accepted'      : 'first-accepted',
+            'H&amp;B'           : 'hb',
+            'Closed'            : 'sold',
         };
         const sc = s => STATUS_CLASS[s] || (s||'available').toLowerCase().replace(/\s+/g,'-').replace(/&/g,'').replace(/[^a-z0-9-]/g,'');
 
@@ -699,6 +702,9 @@
                     ${p.city ? `<div class="card-town">${p.city}</div>` : ""}
                     ${p.financing_type ? `<span class="card-financing"><i class="fas fa-university"></i> ${p.financing_type}</span>` : ''}
                     ${p.agent_access ? `<div class="card-access"><i class="fas fa-key" style="font-size:0.7rem;color:var(--navy-mid)"></i> ${p.agent_access}</div>` : ''}
+                    ${p.occupancy_status ? `<div class="card-occupancy" style="font-size:0.78rem;color:var(--gray);margin-top:2px"><i class="fas fa-home" style="font-size:0.7rem"></i> ${p.occupancy_status}</div>` : ''}
+                    ${p.property_type ? `<div class="card-propstyle" style="font-size:0.78rem;color:var(--gray);margin-top:2px"><i class="fas fa-building" style="font-size:0.7rem"></i> ${p.property_type}</div>` : ''}
+                    ${p.listing_date ? `<div class="card-listdate" style="font-size:0.75rem;color:var(--gray-mid);margin-top:3px">Listed: ${new Date(p.listing_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>` : ''}
                     ${(p.hold_harmless_required && p.hh_attachment_id) ? `<a href="/api/attachments/${p.hh_attachment_id}/view" target="_blank" class="btn-hh" onclick="event.stopPropagation()"><i class="fas fa-exclamation-triangle"></i> Hold Harmless Required to Enter</a>` : p.hold_harmless_required ? '<div class="card-hold-harmless"><i class="fas fa-exclamation-triangle"></i> Hold Harmless Required to Enter</div>' : ''}
 
                     <div class="card-footer">

@@ -37,7 +37,7 @@ class EmailProcessingLog:
     def is_processed(email_id):
         with db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT 1 FROM email_processing_log WHERE email_id = %s", (email_id,))
+            cursor.execute("SELECT 1 FROM email_processing_log WHERE email_id = %s AND processing_status = 'success'", (email_id,))
             return cursor.fetchone() is not None
     
     @staticmethod

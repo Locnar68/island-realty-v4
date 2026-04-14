@@ -74,7 +74,7 @@ def properties():
             # Admin view: show all properties including TOTM
             cur.execute("""
                 SELECT p.id, p.mls_number, p.address, p.address_2, p.current_list_price, 
-                       p.status, p.current_status, p.created_at, p.updated_at, 
+                       p.status, p.current_status, p.created_at, p.updated_at, p.financing_type, p.agent_access, p.occupancy_status, p.reo_status, p.property_type, p.listing_date, 
                        p.has_attachments, p.attachment_count, p.gmail_message_id,
                        p.financing_type, p.agent_access, p.seller_agent_compensation,
                        p.occupancy_status, p.hold_harmless_required,
@@ -85,13 +85,13 @@ def properties():
                        (SELECT a.id FROM attachments a WHERE a.property_id = p.id AND a.is_foil = TRUE AND a.gmail_attachment_id IS NOT NULL AND (a.mime_type = 'application/pdf' OR a.filename ILIKE '%%.pdf') ORDER BY a.uploaded_at DESC LIMIT 1) as foil_attachment_id
                 FROM properties p
                 WHERE (p.is_active IS NULL OR p.is_active = TRUE)
-                ORDER BY p.updated_at DESC
+                ORDER BY p.last_activity_date DESC NULLS LAST
             """)
         else:
             # Public view: hide TOTM properties, and hide properties TOTM > 2 weeks
             cur.execute("""
                 SELECT p.id, p.mls_number, p.address, p.address_2, p.current_list_price, 
-                       p.status, p.current_status, p.created_at, p.updated_at, 
+                       p.status, p.current_status, p.created_at, p.updated_at, p.financing_type, p.agent_access, p.occupancy_status, p.reo_status, p.property_type, p.listing_date, 
                        p.has_attachments, p.attachment_count, p.gmail_message_id,
                        p.financing_type, p.agent_access, p.seller_agent_compensation,
                        p.occupancy_status, p.hold_harmless_required,
@@ -103,7 +103,7 @@ def properties():
                 FROM properties p
                 WHERE p.current_status != 'TOTM'
                   AND (p.is_active IS NULL OR p.is_active = TRUE)
-                ORDER BY p.updated_at DESC
+                ORDER BY p.last_activity_date DESC NULLS LAST
             """)
         
         rows = cur.fetchall()
@@ -713,6 +713,85 @@ def set_photo_url():
         conn.commit()
         conn.close()
         return jsonify({'success': True, 'address': row[0], 'photo_url': photo_url})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+
+@app.route('/api/admin/property/<int:property_id>/update', methods=['POST'])
+def admin_update_property(property_id):
+    """Manual card edit — update status, price, financing from the admin dashboard."""
+    try:
+        data = request.get_json() or {}
+        conn = get_db()
+        cur = conn.cursor()
+
+        parts = []
+        vals = []
+
+        status = data.get('current_status')
+        if status:
+            parts.append('current_status = %s')
+            vals.append(status)
+
+        price = data.get('current_list_price')
+        if price is not None:
+            try:
+                parts.append('current_list_price = %s')
+                vals.append(float(price))
+            except (ValueError, TypeError):
+                pass
+
+        financing = data.get('financing_type')
+        if financing:
+            parts.append('financing_type = %s')
+            vals.append(financing)
+
+        if not parts:
+            return jsonify({'error': 'Nothing to update'}), 400
+
+        # Always stamp last_activity_date on a manual edit
+        parts.append('updated_at = NOW()')
+        parts.append('last_activity_date = NOW()')
+
+        vals.append(property_id)
+        cur.execute(
+            f"UPDATE properties SET {', '.join(parts)} WHERE id = %s",
+            vals
+        )
+        if cur.rowcount == 0:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'Property not found'}), 404
+
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/admin/property/<int:property_id>/delete', methods=['POST'])
+def admin_delete_property(property_id):
+    """Hide a property from the site (sets is_active = FALSE)."""
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute(
+            'UPDATE properties SET is_active = FALSE, updated_at = NOW() WHERE id = %s',
+            (property_id,)
+        )
+        if cur.rowcount == 0:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'Property not found'}), 404
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({'success': True})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -1358,6 +1437,11 @@ def upload_spreadsheet():
         city_col   = find_col(df, ['city', 'town', 'municipality'])
         status_col = find_col(df, ['status', 'reo status', 'current status', 'listing status'])
         price_col  = find_col(df, ['price', 'list price', 'listing price', 'asking'])
+        listing_date_col = find_col(df, ['listing date', 'list date', 'date listed', 'listed date'])
+        financing_col   = find_col(df, ['financing', 'finance', 'loan type', 'cash'])
+        agent_access_col = find_col(df, ['agent access', 'access', 'proceed'])
+        occupancy_col   = find_col(df, ['occupancy', 'occupied', 'occupancy status'])
+        prop_style_col  = find_col(df, ['prop style', 'property style', 'style', 'prop type'])
 
         if not addr_col:
             return jsonify({"error": f"Could not find address column. Columns found: {list(df.columns)}"}), 400
@@ -1387,21 +1471,37 @@ def upload_spreadsheet():
             raw_status = str(row[status_col]).strip() if status_col and pd.notna(row[status_col]) else None
             # Normalize status variants to canonical form
             def normalize_status_val(s):
+                """Map spreadsheet status values to canonical website status names."""
                 if not s or s.lower() in ('nan', 'none', ''):
                     return None
                 sl = s.lower().strip()
-                if sl in ('pending', 'under contract', 'pended', 'in contract',
-                          '1/2 signed', '1/2 signed contract', 'half signed',
-                          '½ signed', '½ signed contract'):
+                # Available (plain)
+                if sl in ('available', 'lpp'):
+                    return 'Available'
+                # Auction/Available
+                if sl in ('auction/available', 'auction available', 'auction'):
+                    return 'Auction/Available'
+                # 1st Accepted
+                if sl in ('1st accept', '1st accepted', 'first accepted', 'first accept'):
+                    return '1st Accepted'
+                # In Contract
+                if sl in ('pending', 'under contract', 'pended', 'in contract', 'incontract'):
                     return 'In Contract'
-                if sl in ('available', 'lpp', 'auction/available', 'auction available'):
-                    return 'Auction Available'
-                if sl in ('1st accept', '1st accepted', 'first accepted'):
-                    return 'First Accepted'
+                # Half Signed
+                if sl in ('1/2 signed', '1/2 signed contract', 'half signed',
+                          '½ signed', '½ signed contract', '1/2 signed contract'):
+                    return '½ Signed'
+                # H&B
+                if sl in ('highest and best', 'highest & best', 'h&b', 'h & b'):
+                    return 'H&B'
+                # TOTM
                 if sl in ('t-o-t-m', 'totm', 'temporarily off the market'):
                     return 'TOTM'
-                if sl in ('highest and best', 'highest & best'):
-                    return 'Highest & Best'
+                # Sold / Closed
+                if sl == 'sold':
+                    return 'Sold'
+                if sl == 'closed':
+                    return 'Closed'
                 return s
             status = normalize_status_val(raw_status)
             price = None
@@ -1411,6 +1511,29 @@ def upload_spreadsheet():
                     price = float(price_str)
                 except:
                     pass
+            # Parse listing date
+            listing_date_val = None
+            if listing_date_col and pd.notna(row[listing_date_col]):
+                raw_ld = row[listing_date_col]
+                import datetime as _dt
+                if isinstance(raw_ld, (_dt.datetime, _dt.date)):
+                    listing_date_val = raw_ld.date() if hasattr(raw_ld, 'date') else raw_ld
+                else:
+                    raw_str = str(raw_ld).strip()
+                    for fmt in ('%m/%d/%Y', '%m/%d/%y', '%Y-%m-%d', '%d-%b-%Y'):
+                        try:
+                            listing_date_val = _dt.datetime.strptime(raw_str, fmt).date()
+                            break
+                        except ValueError:
+                            pass
+                    if listing_date_val is None:
+                        try:
+                            serial = int(float(raw_str))
+                            if 30000 < serial < 60000:
+                                listing_date_val = _dt.date(1899, 12, 30) + _dt.timedelta(days=serial)
+                        except (ValueError, OverflowError):
+                            pass
+
             sheet_properties.append({
                 'address': addr,
                 'address_2': addr2,
@@ -1419,7 +1542,12 @@ def upload_spreadsheet():
                 'normalized': normalize_addr(full_addr),
                 'street_number': re.match(r'^(\d+)', addr.strip()).group(1) if re.match(r'^(\d+)', addr.strip()) else None,
                 'status': status,
-                'price': price
+                'price': price,
+                'listing_date': listing_date_val,
+                'financing': str(row[financing_col]).strip() if financing_col and pd.notna(row[financing_col]) and str(row[financing_col]).strip().lower() not in ('nan','none','') else None,
+                'agent_access': str(row[agent_access_col]).strip() if agent_access_col and pd.notna(row[agent_access_col]) and str(row[agent_access_col]).strip().lower() not in ('nan','none','') else None,
+                'occupancy': str(row[occupancy_col]).strip() if occupancy_col and pd.notna(row[occupancy_col]) and str(row[occupancy_col]).strip().lower() not in ('nan','none','') else None,
+                'prop_style': str(row[prop_style_col]).strip() if prop_style_col and pd.notna(row[prop_style_col]) and str(row[prop_style_col]).strip().lower() not in ('nan','none','') else None,
             })
 
         if not sheet_properties:
@@ -1470,6 +1598,8 @@ def upload_spreadsheet():
                 matched_count += 1
                 # Spreadsheet is SINGLE SOURCE OF TRUTH: always overwrite status/price
                 update_parts = []  # Never touch is_active - emails/manual actions control it
+                # listing_date: set once from spreadsheet, never overwrite if already set
+                # last_activity_date: sync to listing_date only if no email has updated it
                 update_vals = []
                 if sp.get('address_2'):
                     update_parts.append("address_2 = %s")
@@ -1483,6 +1613,27 @@ def upload_spreadsheet():
                 if sp['price']:
                     update_parts.append("current_list_price = %s")
                     update_vals.append(sp['price'])
+                # Write financing, agent_access, occupancy, prop_style from spreadsheet
+                if sp.get('financing'):
+                    update_parts.append("financing_type = %s")
+                    update_vals.append(sp['financing'])
+                if sp.get('agent_access'):
+                    update_parts.append("agent_access = %s")
+                    update_vals.append(sp['agent_access'])
+                if sp.get('occupancy'):
+                    update_parts.append("occupancy_status = %s")
+                    update_vals.append(sp['occupancy'])
+                if sp.get('prop_style'):
+                    update_parts.append("property_type = %s")
+                    update_vals.append(sp['prop_style'])
+                # listing_date: only write if spreadsheet has a value AND DB row has none yet
+                if sp.get('listing_date'):
+                    update_parts.append("listing_date = COALESCE(listing_date, %s)")
+                    update_vals.append(sp['listing_date'])
+                    # seed last_activity_date from listing_date only if it has never been email-updated
+                    # (i.e. last_activity_date equals the old updated_at seed or is NULL)
+                    update_parts.append("last_activity_date = CASE WHEN last_activity_date IS NULL THEN %s::timestamptz ELSE last_activity_date END")
+                    update_vals.append(sp['listing_date'])
                 update_vals.append(best_id)
                 if update_parts:  # Only execute if there's something to update
                     cur.execute(f"UPDATE properties SET {', '.join(update_parts)} WHERE id = %s", update_vals)
