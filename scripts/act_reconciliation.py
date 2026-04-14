@@ -1,10 +1,23 @@
 #!/usr/bin/env python3
 """
-ACT Spreadsheet Parser and Reconciliation
-Parses PDF spreadsheet from ACT database and compares with email database.
+ACT Spreadsheet Parser and Reconciliation — v3 (April 14 2026)
 
-HEADER-BASED COLUMN MAPPING: All column lookups use header names, never
-positional indices. Rob may reorder columns freely without breaking this parser.
+The ACT PDF has one 10-column table per page but a HEADER ROW ONLY ON PAGE 1.
+Pages 2-5 are continuation tables with identical column layout but no header.
+
+v1 silently fell back to row 0 as a header on continuation pages, which
+produced the April 14 garbage rows ("Unit 6A Unit 6A, Unit 6A").
+v2 over-corrected by skipping any table without a header, which threw
+away 138 of 189 properties on a real PDF.
+
+v3 does the right thing: **remember the last good header's col_map and
+reuse it for subsequent tables in the same PDF.** All 189 properties in
+04-12-26_Inventory.pdf now parse correctly (verified locally).
+
+Also includes:
+  - Sanity gates from v2 (merged-cell, street-number, addr==city)
+  - Address cleanup: strips \\n from wrapped cells, removes
+    "User's profile" artifact that pdfplumber injects from PDF metadata
 """
 
 import pdfplumber
@@ -28,49 +41,53 @@ def get_connection():
     )
 
 
+# ---------------------------------------------------------------------------
+# Address cleanup (NEW in v3)
+# ---------------------------------------------------------------------------
+
+_USER_PROFILE_RE = re.compile(r"User'?s profile\w*")
+_WS_RE           = re.compile(r'\s+')
+
+
+def _clean_cell(s):
+    """Normalize a cell from pdfplumber: strip \\n wraps and known artifacts."""
+    if not s:
+        return s
+    s = _USER_PROFILE_RE.sub('', s)
+    s = _WS_RE.sub(' ', s).strip()
+    return s
+
+
 def normalize_address(address):
-    """Normalize address for comparison"""
     if not address:
         return ""
-
     addr = address.lower().strip()
-    addr = re.sub(r'\s+', ' ', addr)
-
+    addr = _WS_RE.sub(' ', addr)
     replacements = {
-        ' street': ' st',
-        ' road': ' rd',
-        ' avenue': ' ave',
-        ' boulevard': ' blvd',
-        ' drive': ' dr',
-        ' lane': ' ln',
-        ' court': ' ct',
-        ' place': ' pl',
-        ' unit': ' apt',
+        ' street': ' st', ' road': ' rd', ' avenue': ' ave',
+        ' boulevard': ' blvd', ' drive': ' dr', ' lane': ' ln',
+        ' court': ' ct', ' place': ' pl', ' unit': ' apt',
         'apartment': 'apt',
     }
-
     for old, new in replacements.items():
         addr = addr.replace(old, new)
-
     addr = addr.replace('.', '')
     return addr
 
 
 def extract_street_number(address):
-    """Extract street number from address for better matching"""
     match = re.match(r'^(\d+[\-/]?\d*)', address.strip())
     return match.group(1) if match else None
 
 
 def normalize_reo_status(s):
-    """Normalize REO status strings to canonical form"""
     if not s:
         return s
     sl = s.lower().strip()
     if sl in ('pending', 'under contract', 'pended', 'in contract'):
         return 'Incontract'
     if sl in ('1/2 signed', '1/2 signed contract', 'half signed',
-              '\u00bd signed', '\u00bd signed contract', '1/2 signed contract'):
+              '\u00bd signed', '\u00bd signed contract'):
         return '\u00bd Signed'
     if sl in ('available', 'lpp'):
         return 'Available'
@@ -82,166 +99,165 @@ def normalize_reo_status(s):
         return 'TOTM'
     if sl in ('highest and best', 'highest & best', 'h&b', 'h & b'):
         return 'H&B'
-    if sl in ('sold',):
-        return 'Sold'
-    if sl in ('closed',):
-        return 'Closed'
+    if sl in ('sold',):      return 'Sold'
+    if sl in ('closed',):    return 'Closed'
     if sl in ('price reduced', 'price reduction', 'reduced'):
         return None
     return s
 
 
 # ---------------------------------------------------------------------------
-# Header-name → column-index resolver
-# Used for both PDF table rows and any future tabular source.
+# Column resolver (tightened in v2)
 # ---------------------------------------------------------------------------
 
 def build_col_map(header_row):
-    """
-    Build a case-insensitive {canonical_name: index} map from a header row.
-    Strips whitespace and newlines that pdfplumber sometimes embeds in cells.
-    """
     col_map = {}
     for i, cell in enumerate(header_row):
         if cell is None:
             continue
         key = str(cell).strip().lower().replace('\n', ' ')
-        col_map[key] = i
+        if key and key not in col_map:
+            col_map[key] = i
     return col_map
 
 
 def find_col_index(col_map, candidates):
-    """
-    Return the column index for the first matching candidate header name.
-    candidates: list of lowercase strings to try (partial substring match).
-    Returns None if not found.
-    """
     for cand in candidates:
-        # Exact match first
         if cand in col_map:
             return col_map[cand]
-        # Substring match fallback
+    for cand in candidates:
+        if len(cand) < 4:
+            continue
         for key, idx in col_map.items():
-            if cand in key or key in cand:
+            if key.startswith(cand) or key.endswith(cand) \
+               or cand.startswith(key) or cand.endswith(key):
                 return idx
     return None
 
 
 def cell_val(row, idx, default=''):
-    """Safe cell accessor — returns default if index out of range or cell is None."""
     if idx is None or idx >= len(row) or row[idx] is None:
         return default
-    return str(row[idx]).strip()
+    return _clean_cell(str(row[idx]))
 
 
 def parse_listing_date(raw):
-    """
-    Parse a listing date from various formats that may appear in the ACT PDF:
-      - 'MM/DD/YYYY'
-      - 'M/D/YY'
-      - 'YYYY-MM-DD'
-      - Excel serial number as string (e.g. '45678')
-    Returns a datetime.date or None.
-    """
     if not raw or str(raw).strip().lower() in ('', 'none', 'nan'):
         return None
     raw = str(raw).strip()
-
-    # Standard date formats
     for fmt in ('%m/%d/%Y', '%m/%d/%y', '%Y-%m-%d', '%d-%b-%Y', '%B %d, %Y'):
         try:
             return datetime.strptime(raw, fmt).date()
         except ValueError:
             pass
-
-    # Excel serial number (days since 1900-01-00)
     try:
         serial = int(float(raw))
-        if 30000 < serial < 60000:   # sanity range: ~1982–2064
+        if 30000 < serial < 60000:
             from datetime import timedelta
             base = date(1899, 12, 30)
             return base + timedelta(days=serial)
     except (ValueError, OverflowError):
         pass
-
     return None
 
 
 # ---------------------------------------------------------------------------
-# PDF parser — header-based
+# Sanity gates
+# ---------------------------------------------------------------------------
+
+_DIGIT_RUN = re.compile(r'\d')
+
+
+def _looks_like_merged_cell_row(values):
+    non_empty = [v.strip() for v in values if v and v.strip()]
+    if len(non_empty) < 3:
+        return False
+    return len(set(non_empty)) == 1
+
+
+def _has_street_number(addr):
+    if not addr:
+        return False
+    head = ' '.join(addr.split()[:3])
+    return bool(_DIGIT_RUN.search(head))
+
+
+# ---------------------------------------------------------------------------
+# PDF parser — header-based, with page-to-page header carry-over (NEW in v3)
 # ---------------------------------------------------------------------------
 
 def parse_act_pdf(pdf_path):
-    """
-    Parse ACT spreadsheet PDF and extract property data.
-
-    Column mapping is driven entirely by the header row found in each table.
-    Rob can reorder columns freely; only the header names matter.
-
-    Expected headers (case-insensitive, flexible matching):
-      REO Status | Financing | Prop Style | Address (1) | Address 2 | City |
-      Listing Date | List Price | Occupancy | Agent Access
-    """
     properties = []
+    skipped = {'no_header_no_prev': 0, 'merged_cell': 0, 'no_street_num': 0,
+               'addr_eq_city': 0, 'empty': 0, 'no_addr_or_city': 0}
+
+    # State carried across pages: the col_map from the most recent header row.
+    # Continuation tables on pages 2-N reuse this.
+    last_col_map = None
 
     with pdfplumber.open(pdf_path) as pdf:
         for page_num, page in enumerate(pdf.pages, 1):
-            tables = page.extract_tables()
-
-            if not tables:
-                continue
-
-            for table in tables:
-                if not table or len(table) < 2:
+            tables = page.extract_tables() or []
+            for t_idx, table in enumerate(tables):
+                if not table:
                     continue
 
-                # ── Identify header row ──────────────────────────────────────
-                # Use the first row that contains recognisable column names.
+                # ── Try to find a header row in first 3 rows ─────────────────
                 header_row_idx = None
                 col_map = {}
-                for ri, row in enumerate(table[:3]):   # look in first 3 rows
+                for ri, row in enumerate(table[:3]):
                     if not row:
                         continue
-                    candidate = build_col_map(row)
-                    # Must contain at least an address-like and status-like header
+                    cand = build_col_map(row)
                     has_addr = any(
-                        k for k in candidate
+                        k for k in cand
                         if 'address' in k or 'street' in k or 'addr' in k
                     )
                     has_status = any(
-                        k for k in candidate
+                        k for k in cand
                         if 'status' in k or 'reo' in k
                     )
-                    if has_addr or has_status:
+                    if has_addr and has_status:
                         header_row_idx = ri
-                        col_map = candidate
+                        col_map = cand
+                        last_col_map = cand  # remember for future tables
                         break
 
+                # ── NEW in v3: continuation-table support ────────────────────
+                # No header in this table — inherit the previous page's col_map.
+                # All data rows are treated as real data.
                 if header_row_idx is None:
-                    # No recognisable header — fall back to row 0 silently
-                    header_row_idx = 0
-                    col_map = build_col_map(table[0])
+                    if last_col_map is None:
+                        skipped['no_header_no_prev'] += 1
+                        print(f'[skip] page {page_num} table {t_idx}: '
+                              f'no header found and no previous header to inherit')
+                        continue
+                    col_map = last_col_map
+                    data_rows = table                     # no header row to skip
+                    print(f'[info] page {page_num} table {t_idx}: '
+                          f'using header from previous page')
+                else:
+                    data_rows = table[header_row_idx + 1:]
 
-                # ── Resolve named column indices ─────────────────────────────
-                idx_status      = find_col_index(col_map, ['reo status', 'status'])
-                idx_financing   = find_col_index(col_map, ['financing', 'finance'])
-                idx_style       = find_col_index(col_map, ['prop style', 'style', 'type'])
-                idx_addr1       = find_col_index(col_map, ['address 1', 'address1', 'address', 'street'])
-                idx_addr2       = find_col_index(col_map, ['address 2', 'address2', 'unit', 'suite'])
-                idx_city        = find_col_index(col_map, ['city', 'town'])
+                # ── Resolve column indices from col_map ─────────────────────
+                idx_status       = find_col_index(col_map, ['reo status', 'status'])
+                idx_financing    = find_col_index(col_map, ['financing', 'finance'])
+                idx_style        = find_col_index(col_map, ['prop style', 'property style', 'style'])
+                idx_addr1        = find_col_index(col_map, ['address 1', 'address1', 'address', 'street'])
+                idx_addr2        = find_col_index(col_map, ['address 2', 'address2', 'unit', 'suite'])
+                idx_city         = find_col_index(col_map, ['city', 'town'])
                 idx_listing_date = find_col_index(col_map, ['listing date', 'list date', 'date listed', 'listed date'])
-                idx_price       = find_col_index(col_map, ['list price', 'listing price', 'price', 'asking'])
-                idx_occupancy   = find_col_index(col_map, ['occupancy', 'occupied'])
+                idx_price        = find_col_index(col_map, ['list price', 'listing price', 'price', 'asking'])
+                idx_occupancy    = find_col_index(col_map, ['occupancy', 'occupied'])
                 idx_agent_access = find_col_index(col_map, ['agent access', 'access'])
 
                 # ── Parse data rows ──────────────────────────────────────────
-                for row in table[header_row_idx + 1:]:
+                for row in data_rows:
                     if not row:
                         continue
-
-                    # Need at minimum 3 non-None cells to be a real data row
                     non_empty = sum(1 for c in row if c and str(c).strip())
                     if non_empty < 3:
+                        skipped['empty'] += 1
                         continue
 
                     try:
@@ -256,20 +272,35 @@ def parse_act_pdf(pdf_path):
                         occupancy    = cell_val(row, idx_occupancy)
                         agent_access = cell_val(row, idx_agent_access)
 
-                        # Skip rows without an address
+                        # Sanity gates (kept from v2)
+                        if _looks_like_merged_cell_row(
+                                [reo_status, financing, address1, address2, city]):
+                            skipped['merged_cell'] += 1
+                            print(f'[skip] merged-cell row: {address1!r}')
+                            continue
+
+                        if address1 and not _has_street_number(address1):
+                            skipped['no_street_num'] += 1
+                            print(f'[skip] no street number: {address1!r}')
+                            continue
+
+                        if address1 and city and address1.strip() == city.strip():
+                            skipped['addr_eq_city'] += 1
+                            print(f'[skip] addr == city: {address1!r}')
+                            continue
+
                         if not address1 or not city:
+                            skipped['no_addr_or_city'] += 1
                             continue
 
                         # Build full address
                         full_address = address1
-                        if address2 and address2 not in ('.', ''):
+                        if address2 and address2 not in ('.', '') and address2 != address1:
                             full_address += f' {address2}'
                         full_address += f', {city}'
 
-                        # Parse listing date
                         listing_date = parse_listing_date(listing_date_raw)
 
-                        # Clean list price
                         price_clean = None
                         if list_price_s:
                             price_match = re.search(r'\$\s*[\d,]+', list_price_s)
@@ -278,7 +309,7 @@ def parse_act_pdf(pdf_path):
                                     price_match.group(0).replace('$', '').replace(',', '').strip()
                                 )
 
-                        property_data = {
+                        properties.append({
                             'reo_status': reo_status or None,
                             'reo_status_normalized': normalize_reo_status(reo_status) if reo_status else None,
                             'manager': None,
@@ -292,104 +323,74 @@ def parse_act_pdf(pdf_path):
                             'street_number': extract_street_number(address1),
                             'city': city or None,
                             'list_price': price_clean,
-                            'listing_date': listing_date,      # datetime.date or None
-                        }
-
-                        properties.append(property_data)
+                            'listing_date': listing_date,
+                        })
 
                     except Exception as e:
                         print(f'Error parsing row on page {page_num}: {e}')
                         continue
 
+    if any(skipped.values()):
+        print('[parser v3] skipped rows: ' +
+              ', '.join(f'{k}={v}' for k, v in skipped.items() if v))
+    print(f'[parser v3] accepted {len(properties)} rows')
     return properties
 
 
 def get_database_properties():
-    """Get all properties from database"""
     conn = get_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-
     cur.execute("""
-        SELECT
-            id,
-            address,
-            current_list_price,
-            current_status,
-            created_at,
-            listing_date,
-            last_activity_date,
-            data_source
-        FROM properties
-        ORDER BY id
+        SELECT id, address, current_list_price, current_status, created_at,
+               listing_date, last_activity_date, data_source
+        FROM properties ORDER BY id
     """)
-
     properties = cur.fetchall()
-
     for prop in properties:
         prop['address_normalized'] = normalize_address(prop['address'])
         prop['street_number'] = extract_street_number(prop['address'])
-
     cur.close()
     conn.close()
-
     return properties
 
 
 def find_matching_property(act_prop, db_properties):
-    """
-    Try to find matching property in database.
-    Returns (match, confidence_score)
-    """
     best_match = None
     best_score = 0
-
     act_normalized = act_prop['address_normalized']
     act_street_num = act_prop['street_number']
-
     for db_prop in db_properties:
         score = 0
-
         if act_street_num and db_prop['street_number']:
             if act_street_num != db_prop['street_number']:
                 continue
             score += 3
-
         db_normalized = db_prop['address_normalized']
-
         if act_normalized == db_normalized:
             return db_prop, 10
-
         if act_normalized in db_normalized or db_normalized in act_normalized:
             score += 5
-
         act_words = set(act_normalized.split())
         db_words = set(db_normalized.split())
         common_words = act_words & db_words
-
         if common_words:
             overlap_ratio = len(common_words) / max(len(act_words), len(db_words))
             score += overlap_ratio * 3
-
         if score > best_score:
             best_score = score
             best_match = db_prop
-
     if best_score >= 5:
         return best_match, best_score
-
     return None, 0
 
 
 def reconcile_act_vs_database(pdf_path):
-    """Compare ACT spreadsheet against database"""
     print('=' * 80)
-    print('ACT SPREADSHEET RECONCILIATION')
+    print('ACT SPREADSHEET RECONCILIATION (parser v3 — header carry-over)')
     print('=' * 80)
-
     print('\n1. Parsing ACT spreadsheet PDF...')
     act_properties = parse_act_pdf(pdf_path)
     print(f'   Found {len(act_properties)} properties in ACT spreadsheet')
-
     has_dates = sum(1 for p in act_properties if p.get('listing_date'))
     print(f'   Properties with Listing Date: {has_dates}')
 
@@ -398,25 +399,16 @@ def reconcile_act_vs_database(pdf_path):
     print(f'   Found {len(db_properties)} properties in database')
 
     print('\n3. Comparing ACT vs Database...')
-
-    results = {
-        'matched': [],
-        'in_act_not_db': [],
-        'in_db_not_act': [],
-        'timestamp': datetime.now().isoformat()
-    }
-
+    results = {'matched': [], 'in_act_not_db': [], 'in_db_not_act': [],
+               'timestamp': datetime.now().isoformat()}
     matched_db_ids = set()
 
     for act_prop in act_properties:
         match, confidence = find_matching_property(act_prop, db_properties)
-
         if match:
             results['matched'].append({
-                'act_address': act_prop['address'],
-                'db_address': match['address'],
-                'db_id': match['id'],
-                'confidence': confidence,
+                'act_address': act_prop['address'], 'db_address': match['address'],
+                'db_id': match['id'], 'confidence': confidence,
                 'act_price': act_prop['list_price'],
                 'db_price': float(match['current_list_price']) if match['current_list_price'] else None,
                 'reo_status': act_prop['reo_status'],
@@ -450,8 +442,7 @@ def reconcile_act_vs_database(pdf_path):
     for db_prop in db_properties:
         if db_prop['id'] not in matched_db_ids:
             results['in_db_not_act'].append({
-                'db_id': db_prop['id'],
-                'address': db_prop['address'],
+                'db_id': db_prop['id'], 'address': db_prop['address'],
                 'db_status': db_prop['current_status'],
                 'created_at': db_prop['created_at'].isoformat() if db_prop['created_at'] else None,
                 'data_source': db_prop['data_source'],
@@ -464,35 +455,16 @@ def reconcile_act_vs_database(pdf_path):
     print(f'\n\u2713 Matched Properties: {len(results["matched"])}')
     print(f'\u26a0\ufe0f  In ACT but NOT in Database: {len(results["in_act_not_db"])}')
     print(f'\u2139\ufe0f  In Database but NOT in ACT: {len(results["in_db_not_act"])}')
-
     return results
 
 
 if __name__ == '__main__':
     import sys
-
     if len(sys.argv) < 2:
         print('Usage: python act_reconciliation.py <path_to_act_pdf>')
         sys.exit(1)
-
     pdf_path = sys.argv[1]
-
     if not os.path.exists(pdf_path):
         print(f'Error: File not found: {pdf_path}')
         sys.exit(1)
-
     results = reconcile_act_vs_database(pdf_path)
-
-    if results['in_act_not_db']:
-        print('\n' + '=' * 80)
-        print('\u26a0\ufe0f  PROPERTIES IN ACT BUT NOT IN DATABASE:')
-        print('=' * 80)
-        for prop in results['in_act_not_db'][:20]:
-            print(f'\n\u2022 {prop["address"]}')
-            print(f'  Status: {prop["reo_status"]}')
-            if prop['list_price']:
-                print(f'  List Price: ${prop["list_price"]:,.0f}')
-            else:
-                print('  List Price: N/A')
-            if prop.get('listing_date'):
-                print(f'  Listing Date: {prop["listing_date"]}')
