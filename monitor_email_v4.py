@@ -7,6 +7,7 @@ FIXED: Removed is:unread dependency, added attachment tracking, FOIL detection
 
 import os
 import sys
+from internal_email_parser import is_internal_email, parse_internal_email, apply_internal_update
 import time
 import logging
 from datetime import datetime, timedelta
@@ -160,6 +161,53 @@ def apply_rob_rules(subject, body, attachments):
 
 
 
+
+
+def process_internal_email(email_data, logger):
+    """
+    Process internal agent emails using the internal_email_parser module.
+    
+    Args:
+        email_data: dict with keys 'id', 'subject', 'body', 'from', 'date'
+        logger: logging.Logger instance
+        
+    Returns:
+        dict: {'processed': bool, 'property_id': int or None, 'actions': list}
+    """
+    try:
+        subject = email_data.get('subject', '')
+        body = email_data.get('body', '')
+        sender = email_data.get('from', '')
+        
+        if not is_internal_email(subject, sender):
+            return {'processed': False, 'reason': 'not_internal'}
+        
+        parsed = parse_internal_email(subject, body, sender=sender)
+        
+        if parsed is None:
+            logger.warning(f"Internal email parse failed: {subject[:60]}")
+            return {'processed': False, 'reason': 'parse_failed'}
+        
+        result = apply_internal_update(
+            parsed,
+            email_data.get('id'),
+            subject,
+            sender,
+            email_data.get('date')
+        )
+        
+        if result.get('property_id'):
+            logger.info(f"✅ Internal email update: prop={result['property_id']} actions={result['actions']}")
+            return {'processed': True, **result}
+        else:
+            logger.warning(f"Internal email: no property matched for {parsed.get('address')}")
+            return {'processed': False, **result}
+            
+    except Exception as e:
+        logger.error(f"process_internal_email error: {e}", exc_info=True)
+        return {'processed': False, 'error': str(e)}
+
+
 class EmailMonitorV4:
     """Enhanced email monitor with AI processing for V4"""
     
@@ -195,7 +243,6 @@ class EmailMonitorV4:
         try:
             # Search for unread property emails from last 30 days
             query_parts = [
-                'is:unread',
                 f'after:{int((datetime.now() - timedelta(days=30)).timestamp())}'
             ]
             
@@ -204,7 +251,8 @@ class EmailMonitorV4:
                 'Status Update', 'New List Price', 'Price Reduction', 'Price Reduced',
                 'Highest & Best', 'Highest and Best', 'TOTM', 'First Accepted',
                 'Back on the Market', 'BOM', 'Auction Available', 'Temporarily off',
-                'Origination', 'New Listing', 'Back on Market', 'Contract', 'T-O-T-M', 'Temporarily off the Market'
+                'Origination', 'New Listing', 'Back on Market', 'Contract', 'T-O-T-M', 'Temporarily off the Market',
+                'Property Update'
             ]
             keyword_query = ' OR '.join([f'subject:"{kw}"' for kw in keywords])
             query_parts.append(f'({keyword_query})')
@@ -578,6 +626,36 @@ class EmailMonitorV4:
                         WHERE id = %s
                     """, (property_id, email_data['id'], property_id))
                 
+                # 4.25 Handle listing_date for "New List Price" emails
+                # RULE: Only set listing_date if it's currently NULL
+                # RULE: "New List Price" emails set listing_date = email_date
+                # RULE: All other emails preserve existing listing_date
+                email_subject_lower = email_data.get('subject', '').lower()
+                is_new_list_price = any(phrase in email_subject_lower for phrase in [
+                    'new list price', 'new listing price', 'origination', 'new listing'
+                ])
+                
+                if is_new_list_price:
+                    # This is a "New List Price" email - set listing_date if NULL
+                    cursor.execute("""
+                        UPDATE properties SET 
+                            listing_date = COALESCE(listing_date, %s::date),
+                            last_activity_date = NOW(),
+                            updated_at = NOW()
+                        WHERE id = %s
+                    """, (email_data['date'], property_id))
+                    actions.append('listing_date_set_from_new_list_price')
+                    logger.info(f"Set listing_date from 'New List Price' email for property {property_id}")
+                else:
+                    # Not a "New List Price" email - just update last_activity_date
+                    cursor.execute("""
+                        UPDATE properties SET 
+                            last_activity_date = NOW(),
+                            updated_at = NOW()
+                        WHERE id = %s
+                    """, (property_id,))
+                    actions.append('last_activity_date_updated')
+                
                 # 4.5 Rob's hard-coded rules (priority over AI extraction)
                 rob = apply_rob_rules(
                     email_data.get('subject', ''),
@@ -636,7 +714,8 @@ class EmailMonitorV4:
                         if normalized_new_status == 'TOTM':
                             cursor.execute("""
                                 UPDATE properties SET 
-                                    current_status = %s, 
+                                    current_status = %s,
+                                    status_source = 'email',
                                     totm_since = NOW(),
                                     updated_at = NOW(),
                                     last_email_id = %s
@@ -648,7 +727,8 @@ class EmailMonitorV4:
                         elif normalized_new_status == 'Available' and old_status == 'TOTM':
                             cursor.execute("""
                                 UPDATE properties SET 
-                                    current_status = %s, 
+                                    current_status = %s,
+                                    status_source = 'email',
                                     totm_since = NULL,
                                     updated_at = NOW(),
                                     last_email_id = %s
@@ -661,6 +741,7 @@ class EmailMonitorV4:
                             cursor.execute("""
                                 UPDATE properties SET 
                                     current_status = %s,
+                                    status_source = 'email',
                                     totm_since = NULL,
                                     updated_at = NOW(),
                                     last_email_id = %s
@@ -827,6 +908,51 @@ class EmailMonitorV4:
             for message in messages:
                 email_data = self.get_email_content(message['id'])
                 if email_data:
+                    # Check for internal standardized emails (Tina/Fernando/Nikki/Mickey/Claudia)
+                    if is_internal_email(email_data.get('subject', ''), email_data.get('from', '')):
+                        internal_start = time.time()
+                        internal_result = process_internal_email(email_data, logger)
+                        if internal_result.get('processed'):
+                            internal_ms = int((time.time() - internal_start) * 1000)
+                            logger.info(f"✅ Processed internal email: {internal_result}")
+                            # Log to dedup table so we don't reprocess every cycle
+                            try:
+                                EmailProcessingLog.log(
+                                    email_id=email_data['id'],
+                                    email_subject=email_data.get('subject', ''),
+                                    email_from=email_data.get('from', ''),
+                                    email_date=email_data.get('date'),
+                                    status='success',
+                                    property_id=internal_result.get('property_id'),
+                                    actions_taken=json.dumps(internal_result.get('actions') or []),
+                                    processing_time_ms=internal_ms,
+                                    ai_model_used='internal_parser'
+                                )
+                            except Exception as log_err:
+                                logger.warning(f"Internal email log failed: {log_err}")
+                            # Mark as read so the inbox stays clean
+                            try:
+                                self._mark_as_read(email_data['id'])
+                            except Exception as mr_err:
+                                logger.warning(f"Internal mark_as_read failed: {mr_err}")
+                            processed_count += 1
+                            continue  # Skip regular AI processing
+                        else:
+                            # Internal parser saw it but couldn't act — log so we don't
+                            # spin on it forever, but DON'T mark as read so a human can review.
+                            try:
+                                EmailProcessingLog.log(
+                                    email_id=email_data['id'],
+                                    email_subject=email_data.get('subject', ''),
+                                    email_from=email_data.get('from', ''),
+                                    email_date=email_data.get('date'),
+                                    status='internal_no_action',
+                                    actions_taken=json.dumps(internal_result.get('actions') or [internal_result.get('reason', 'unknown')]),
+                                    ai_model_used='internal_parser'
+                                )
+                            except Exception as log_err:
+                                logger.warning(f"Internal email log failed: {log_err}")
+                            continue
                     result = self.process_email(email_data)
                     if result:
                         processed_count += 1
@@ -851,6 +977,7 @@ class EmailMonitorV4:
             except Exception as e:
                 logger.error(f"Error in continuous monitoring: {str(e)}", exc_info=True)
                 time.sleep(60)  # Sleep 1 minute on error
+
 
 def main():
     """Main entry point"""

@@ -1140,13 +1140,14 @@ def upload_act_spreadsheet():
                     if match.get('occupancy'):
                         update_parts.append("occupancy_status = %s")
                         update_vals.append(match['occupancy'])
-                    # H&B preservation: keep H&B unless spreadsheet shows stronger status
+                    # H&B + email-status preservation
                     update_parts.append(
                         "current_status = CASE "
                         "WHEN current_status = 'H&B' AND %s NOT IN ('1st Accepted', '½ Signed', 'Incontract', 'Sold', 'Closed') THEN current_status "
+                        "WHEN status_source = 'email' AND %s NOT IN ('Sold', 'Closed') THEN current_status "
                         "ELSE %s END"
                     )
-                    update_vals.extend([normalized, normalized])
+                    update_vals.extend([normalized, normalized, normalized])
                     update_vals.append(match['db_id'])
                     sql = "UPDATE properties SET " + ", ".join(update_parts) + " WHERE id = %s"
                     cur.execute(sql, update_vals)
