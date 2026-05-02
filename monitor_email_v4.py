@@ -91,6 +91,7 @@ def apply_rob_rules(subject, body, attachments):
     Rules:
       1. "New List Price:" + Lock Box body         -> Available + Proceed
       2. "New List Price:" + Occupied + auction.com -> Auction/Available + Occupied – NO SHOWS
+      2b. "New List Price:" + Occupied (no auction.com) -> Available + Occupied
       3. "New List Price:" + Hold Harmless body     -> Available + Proceed – Hold Harmless (+ flag)
       4. "Highest & Best Notification:" subject     -> H&B
       5. "BOM - Back on Market" subject             -> Available
@@ -125,6 +126,14 @@ def apply_rob_rules(subject, body, attachments):
                 'new_status': 'Auction/Available',
                 'agent_access': 'Occupied – NO SHOWS',
                 'rule_fired': 'NEW_LIST_PRICE_OCCUPIED_AUCTION',
+            })
+        elif 'occupied' in body_l:
+            # Occupied property without auction.com (e.g. brokermint submissions)
+            # Status stays Available but flag access as Occupied
+            result.update({
+                'new_status': 'Available',
+                'agent_access': 'Occupied',
+                'rule_fired': 'NEW_LIST_PRICE_OCCUPIED',
             })
         elif 'lock box' in body_l or 'lockbox' in body_l:
             result.update({
